@@ -121,9 +121,12 @@ export async function exportElementToPdf({
 
   const clone = element.cloneNode(true)
 
-  // Strip UI chrome that shouldn't appear in PDF
+  // Strip UI chrome that shouldn't appear in PDF.
+  // Both attribute (`data-print-hide`) and class (`.no-print`) are honored —
+  // any element marked either way is removed from the cloned tree before
+  // rendering to canvas.
   clone
-    .querySelectorAll('[data-print-hide]')
+    .querySelectorAll('[data-print-hide], .no-print')
     .forEach((el) => el.remove())
 
   // Force overflow visible so wide content (Gantt) prints fully

@@ -390,7 +390,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
                     ราคา/หน่วย
                   </th>
                   <th className="text-right px-3 py-3 font-medium w-32">รวม</th>
-                  <th className="text-center px-3 py-3 font-medium w-28">จัดการ</th>
+                  <th className="text-center px-3 py-3 font-medium w-28 no-print">จัดการ</th>
                 </tr>
               </thead>
               <tbody>
@@ -419,7 +419,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
                       <td className="px-3 py-2.5 text-right font-mono text-ink font-medium">
                         {formatBaht(lineTotal)}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 no-print">
                         <div className="flex justify-center gap-1">
                           <button
                             type="button"
@@ -451,7 +451,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
                   <td className="px-3 py-2.5 text-right font-mono text-ink">
                     {formatBaht(total)}
                   </td>
-                  <td className="px-3 py-2.5"></td>
+                  <td className="px-3 py-2.5 no-print"></td>
                 </tr>
                 <tr className="bg-elevated/40 text-ink-soft">
                   <td className="px-4 py-2.5" colSpan={5}>
@@ -460,7 +460,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
                   <td className="px-3 py-2.5 text-right font-mono text-ink">
                     {formatBaht(labor)}
                   </td>
-                  <td className="px-3 py-2.5"></td>
+                  <td className="px-3 py-2.5 no-print"></td>
                 </tr>
                 <tr className="bg-accent/10 border-t-2 border-accent/30 font-semibold">
                   <td className="px-4 py-3 text-ink" colSpan={5}>
@@ -491,7 +491,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
         </Card>
       )}
 
-      <div className="flex justify-between items-center gap-3">
+      <div className="flex justify-between items-center gap-3 no-print">
         <Button variant="secondary" onClick={() => setEditing('new')}>
           ➕ เพิ่มรายการวัสดุ
         </Button>

@@ -83,7 +83,7 @@ function BOQTab({ result, gradeMultiplier, isManual, onUpdateTask, onEditTask, o
                 </th>
                 <th className="text-right px-3 py-3 font-medium w-32">รวม</th>
                 <th className="text-right px-3 py-3 font-medium w-16">วัน</th>
-                <th className="text-center px-3 py-3 font-medium w-24">จัดการ</th>
+                <th className="text-center px-3 py-3 font-medium w-24 no-print">จัดการ</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +116,7 @@ function BOQTab({ result, gradeMultiplier, isManual, onUpdateTask, onEditTask, o
                 <td className="px-3 py-3 text-right font-mono text-ink-soft">
                   {result.totalDays || '-'}
                 </td>
-                <td className="px-3 py-3"></td>
+                <td className="px-3 py-3 no-print"></td>
               </tr>
             </tfoot>
           </table>
@@ -155,8 +155,8 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
         />
       ))}
       
-      {/* เพิ่มแถวสำหรับปุ่ม "+ เพิ่มรายการ" ของแต่ละเฟส */}
-      <tr className="border-t border-line/20 hover:bg-elevated/20 transition-colors">
+      {/* เพิ่มแถวสำหรับปุ่ม "+ เพิ่มรายการ" ของแต่ละเฟส (ซ่อนตอน export/print) */}
+      <tr className="border-t border-line/20 hover:bg-elevated/20 transition-colors no-print">
         <td className="px-4 py-2 pl-10" colSpan={8}>
           <button
             onClick={handleAddClick}
@@ -167,7 +167,7 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
         </td>
       </tr>
 
-      <tr className="border-t border-line bg-elevated/30 text-ink-soft font-medium">
+      <tr className="border-t border-line bg-elevated/30 text-ink-soft font-medium phase-total">
         <td className="px-4 py-2 pl-10" colSpan={3}>
           รวมเฟส {row.idx + 1}
         </td>
@@ -181,7 +181,7 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
           {formatBaht(row.total)}
         </td>
         <td className="px-3 py-2 text-right font-mono">{row.days}</td>
-        <td className="px-3 py-2"></td>
+        <td className="px-3 py-2 no-print"></td>
       </tr>
     </>
   )
@@ -286,15 +286,15 @@ function TaskRow({ task, isManual, onUpdateTask, onEditTask, onDeleteTask }) {
         {task.duration_days || '-'}
       </td>
       
-      <td className="px-3 py-2 text-center whitespace-nowrap opacity-50 group-hover:opacity-100 transition-opacity">
-        <button 
+      <td className="px-3 py-2 text-center whitespace-nowrap opacity-50 group-hover:opacity-100 transition-opacity no-print">
+        <button
           onClick={handleEditClick}
           className="p-1.5 text-ink-muted hover:text-accent hover:bg-accent/10 rounded transition-colors mr-1"
           title="แก้ไขรายการ"
         >
           ✏️
         </button>
-        <button 
+        <button
           onClick={handleDeleteClick}
           className="p-1.5 text-ink-muted hover:text-danger hover:bg-danger/10 rounded transition-colors"
           title="ลบรายการ"

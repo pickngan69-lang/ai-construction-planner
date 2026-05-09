@@ -128,6 +128,213 @@ textarea {
   background: #3b3633;
 }
 
+/* ---------- FORMAL CONTRACT DOCUMENT (สัญญาทางกฎหมาย) ---------- */
+.contract-page {
+  max-width: 794px; /* A4 width @ 96dpi */
+  margin: 0 auto;
+  padding: 60px 70px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: 'Noto Sans Thai', 'Sarabun', serif;
+  font-size: 15px;
+  line-height: 2;
+  border: 1px solid #e0e0e0;
+  box-sizing: border-box;
+}
+
+.contract-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+.contract-subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  border-bottom: 2px solid #333;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+}
+
+.contract-meta {
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 28px;
+}
+
+.clause-number {
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: 22px;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+}
+
+.clause-body {
+  text-indent: 36px; /* indent first line */
+  margin-bottom: 8px;
+}
+
+.filled-data {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+.blank-line {
+  display: inline-block;
+  min-width: 200px;
+  border-bottom: 1px dotted #333;
+  margin: 0 4px;
+  white-space: nowrap;
+}
+
+.blank-line.short {
+  min-width: 80px;
+}
+.blank-line.medium {
+  min-width: 140px;
+}
+.blank-line.long {
+  min-width: 320px;
+}
+
+/* ตารางข้อมูลโครงการ (ขอบเขตงาน) */
+.spec-table {
+  width: 100%;
+  margin: 12px 0 16px;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+.spec-table td {
+  padding: 6px 12px;
+  vertical-align: top;
+}
+.spec-table td:first-child {
+  width: 30%;
+  color: #555;
+}
+.spec-table td:last-child {
+  font-weight: 600;
+}
+
+/* ตารางงวดชำระ */
+.payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0 18px;
+  font-size: 14px;
+}
+.payment-table th,
+.payment-table td {
+  border: 1px solid #999;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.payment-table th {
+  background: #f3f3f3;
+  font-weight: 600;
+  text-align: center;
+}
+.payment-table td.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.payment-table td.center {
+  text-align: center;
+}
+.payment-table .total-row td {
+  background: #f3f3f3;
+  font-weight: 700;
+}
+
+/* กรอบราคารวม */
+.total-price-box {
+  border: 2px solid #333;
+  padding: 18px 20px;
+  margin: 14px 0 18px;
+  text-align: center;
+  background: #fafafa;
+}
+.total-price-amount {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.total-price-text {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.4;
+}
+.total-price-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ccc;
+  font-size: 13px;
+  color: #333;
+}
+.total-price-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ส่วนเซ็น */
+.signature-section {
+  margin-top: 50px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.signature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 36px;
+}
+.signature-row.witnesses {
+  margin-top: 30px;
+}
+.signature-block {
+  text-align: center;
+}
+.signature-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+.signature-line .lbl {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.signature-line .dots {
+  flex: 1;
+  border-bottom: 1px dotted #333;
+  height: 1em;
+}
+.signature-name {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+}
+.signature-date {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #777;
+}
+
 /* ---------- A4 PRINT CONTAINER (formal documents like contract) ---------- */
 .print-container {
   width: 800px;
@@ -183,12 +390,47 @@ textarea {
     color: #000 !important;
   }
 
-  /* Hide UI chrome that shouldn't be in PDF */
+  /* Hide UI chrome that shouldn't be in PDF — covers both class + attribute,
+     and explicit selectors for action buttons / management columns */
   [data-print-hide],
-  header,
+  [data-print-hide] *,
   .no-print,
-  button[type='button']:not(.print-keep) {
+  .no-print *,
+  header,
+  nav,
+  .tab-bar,
+  .grade-selector,
+  .mode-toggle,
+  .zoom-controls,
+  .action-buttons,
+  button[class*='edit-task'],
+  button[class*='delete-task'] {
     display: none !important;
+  }
+
+  /* ตารางใน print: เส้นขอบสีดำชัดเจน, สีขาวดำ */
+  table {
+    border-collapse: collapse !important;
+    page-break-inside: avoid;
+  }
+  table th,
+  table td {
+    border: 1px solid #333 !important;
+    color: #000 !important;
+    background: #fff !important;
+    padding: 8px !important;
+  }
+  table th {
+    background: #f0f0f0 !important;
+    font-weight: 700 !important;
+  }
+  table tr.phase-total td,
+  table tfoot td {
+    background: #f0f0f0 !important;
+    font-weight: 700 !important;
+  }
+  tr {
+    page-break-inside: avoid;
   }
 
   /* expand truncated/scrollable areas so everything prints */

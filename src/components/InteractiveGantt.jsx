@@ -656,7 +656,10 @@ function InteractiveGantt({
                 </div>
                 <div className="flex items-center justify-center">ทำจริง</div>
               </div>
-              <div style={{ width: DELETE_WIDTH }} className="shrink-0 border-r border-line" />
+              <div
+                style={{ width: DELETE_WIDTH }}
+                className="shrink-0 border-r border-line no-print"
+              />
               <div className="relative" style={{ width: chartDays * colWidth }}>
                 {dayTicks.map((d) => (
                   <span
@@ -781,10 +784,10 @@ function InteractiveGantt({
                         </div>
                       </div>
 
-                      {/* Delete */}
+                      {/* Delete (ซ่อนตอน export/print) */}
                       <div
                         style={{ width: DELETE_WIDTH }}
-                        className="shrink-0 border-r border-line flex items-center justify-center"
+                        className="shrink-0 border-r border-line flex items-center justify-center no-print"
                       >
                         <button
                           type="button"

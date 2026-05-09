@@ -22,8 +22,8 @@ function TaskCard({ task, color, onEditTask, onDeleteTask }) {
       className="rounded-lg border border-line bg-elevated/40 p-4 relative group transition-colors hover:border-line/80 hover:bg-elevated/60"
       style={{ borderLeft: `3px solid ${color}` }}
     >
-      {/* ปุ่มจัดการ (จะแสดงเมื่อเอาเมาส์ชี้การ์ด) */}
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10 bg-elevated/80 backdrop-blur-sm rounded-md p-0.5">
+      {/* ปุ่มจัดการ (แสดงเมื่อ hover, ซ่อนตอน export/print) */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10 bg-elevated/80 backdrop-blur-sm rounded-md p-0.5 no-print">
         <button 
           onClick={handleEditClick}
           className="p-1.5 text-ink-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
@@ -144,10 +144,10 @@ function TaskDetailTab({ result, onEditTask, onDeleteTask, onAddTask }) {
                 />
               ))}
               
-              {/* การ์ดสำหรับกดปุ่มเพิ่มงานในเฟส */}
+              {/* การ์ดสำหรับกดปุ่มเพิ่มงานในเฟส (ซ่อนตอน export/print) */}
               <button
                 onClick={handleAddClick}
-                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-line hover:border-accent hover:text-accent text-ink-muted bg-canvas/30 hover:bg-accent/5 transition-all min-h-[120px] p-6"
+                className="no-print flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-line hover:border-accent hover:text-accent text-ink-muted bg-canvas/30 hover:bg-accent/5 transition-all min-h-[120px] p-6"
               >
                 <span className="text-2xl font-light">+</span>
                 <span className="text-sm font-medium">เพิ่มงานในเฟสนี้</span>
