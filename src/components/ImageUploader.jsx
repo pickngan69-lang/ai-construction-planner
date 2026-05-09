@@ -173,4 +173,4 @@ function ImageUploader({ images, setImages, maxFiles = 7 }) {
   )
 }
 
-export default ImageUploader
+export default ImageUploade
