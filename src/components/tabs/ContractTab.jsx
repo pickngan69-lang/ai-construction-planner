@@ -7,12 +7,18 @@ const inputClass =
   'w-full text-sm p-2 rounded border border-line bg-canvas text-ink placeholder:text-ink-muted focus:border-accent outline-none transition-colors'
 
 // ส่วนยอดเงิน/ตัวเลขในกระดาษ — แสดงตัวจริงถ้ามี ไม่งั้นเป็น placeholder จาง
-const Field = ({ value, placeholder, strong = true }) => {
+// nowrap=true: บังคับไม่ให้ตัวเลขถูกตัดบรรทัด (ใช้กับ ID, เลขทะเบียน, ยอดเงิน)
+const Field = ({ value, placeholder, strong = true, nowrap = false }) => {
+  const wrapCls = nowrap ? 'whitespace-nowrap' : ''
   if (value) {
-    return strong ? <strong>{value}</strong> : <span>{value}</span>
+    return strong ? (
+      <strong className={wrapCls}>{value}</strong>
+    ) : (
+      <span className={wrapCls}>{value}</span>
+    )
   }
   return (
-    <span className="text-gray-400 font-normal">{placeholder}</span>
+    <span className={`text-gray-400 font-normal ${wrapCls}`}>{placeholder}</span>
   )
 }
 
@@ -401,8 +407,7 @@ function ContractTab({ result, projectInfo }) {
           }
           data-export-orientation="portrait"
           data-export-bare="true"
-          className="bg-white text-black mx-auto w-full max-w-[210mm] min-h-[297mm] shadow-md text-[13px] leading-relaxed border border-line/20"
-          style={{ padding: '20mm 22mm' }}
+          className="print-container mx-auto min-h-[297mm] shadow-md border border-line/20"
         >
           {/* Title */}
           <h1
@@ -434,7 +439,7 @@ function ContractTab({ result, projectInfo }) {
 
           {/* Owner paragraph */}
           <p
-            className="mb-4 break-inside-avoid"
+            className="mb-4 break-inside-avoid clause-block"
             data-no-break
           >
             สัญญานี้ทำขึ้นระหว่าง{' '}
@@ -446,6 +451,7 @@ function ContractTab({ result, projectInfo }) {
             <Field
               value={form.ownerId}
               placeholder="......................................"
+              nowrap
             />{' '}
             อยู่บ้านเลขที่{' '}
             <Field
@@ -457,7 +463,7 @@ function ContractTab({ result, projectInfo }) {
 
           {/* Contractor paragraph */}
           <p
-            className="mb-6 break-inside-avoid"
+            className="mb-6 break-inside-avoid clause-block"
             data-no-break
           >
             กับ{' '}
@@ -469,6 +475,7 @@ function ContractTab({ result, projectInfo }) {
             <Field
               value={form.contractorId}
               placeholder="......................................"
+              nowrap
             />{' '}
             ตั้งอยู่เลขที่{' '}
             <Field
@@ -488,10 +495,12 @@ function ContractTab({ result, projectInfo }) {
               ผู้ว่าจ้างตกลงว่าจ้าง และผู้รับจ้างตกลงรับจ้างทำการก่อสร้าง/ปรับปรุง
               ตามรายการใบเสนอราคา (BOQ) และแบบรูปรายการที่แนบท้ายสัญญานี้
             </li>
-            <li className="break-inside-avoid" data-no-break>
+            <li className="break-inside-avoid clause-block" data-no-break>
               <strong>ค่าจ้าง:</strong>{' '}
               ผู้ว่าจ้างตกลงจ่ายค่าจ้างเหมา (รวมค่าวัสดุและค่าแรงงาน) เป็นเงินทั้งสิ้น{' '}
-              <strong>{formatBaht(customTotal)}</strong>{' '}
+              <strong className="whitespace-nowrap">
+                {formatBaht(customTotal)}
+              </strong>{' '}
               ซึ่งรวมภาษีอากรและค่าใช้จ่ายอื่นๆ ทั้งปวงแล้ว
             </li>
             <li className="break-inside-avoid" data-no-break>
@@ -505,12 +514,21 @@ function ContractTab({ result, projectInfo }) {
                   return (
                     <li
                       key={inst.id}
-                      className="break-inside-avoid"
+                      className="break-inside-avoid clause-block"
                       data-no-break
                     >
-                      <strong>งวดที่ {index + 1}</strong>: จำนวนร้อยละ{' '}
-                      {inst.percent || 0} ของค่าจ้างเหมา เป็นเงิน{' '}
-                      <strong>{formatBaht(amount)}</strong> จ่ายเมื่อ{' '}
+                      <strong className="whitespace-nowrap">
+                        งวดที่ {index + 1}
+                      </strong>
+                      : จำนวนร้อยละ{' '}
+                      <span className="whitespace-nowrap">
+                        {inst.percent || 0}
+                      </span>{' '}
+                      ของค่าจ้างเหมา เป็นเงิน{' '}
+                      <strong className="whitespace-nowrap">
+                        {formatBaht(amount)}
+                      </strong>{' '}
+                      จ่ายเมื่อ{' '}
                       <Field
                         value={inst.condition}
                         placeholder="........................................................................"
@@ -521,11 +539,12 @@ function ContractTab({ result, projectInfo }) {
                 })}
               </ul>
             </li>
-            <li className="break-inside-avoid" data-no-break>
+            <li className="break-inside-avoid clause-block" data-no-break>
               <strong>กำหนดเวลาแล้วเสร็จ:</strong>{' '}
               ผู้รับจ้างตกลงจะเริ่มลงมือทำงานที่รับจ้าง
               และจะต้องทำงานให้แล้วเสร็จบริบูรณ์ภายในระยะเวลา{' '}
-              <strong>{customDays}</strong> วัน นับแต่วันเริ่มงาน
+              <strong className="whitespace-nowrap">{customDays} วัน</strong>{' '}
+              นับแต่วันเริ่มงาน
             </li>
             <li className="break-inside-avoid" data-no-break>
               <strong>การตรวจรับงาน:</strong>{' '}

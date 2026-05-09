@@ -128,6 +128,41 @@ textarea {
   background: #3b3633;
 }
 
+/* ---------- A4 PRINT CONTAINER (formal documents like contract) ---------- */
+.print-container {
+  width: 800px;
+  padding: 20mm;
+  background: #ffffff;
+  color: #111111;
+  line-height: 1.6;
+  font-family: 'Noto Sans Thai', system-ui, sans-serif;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+/* Headings should stay with the next paragraph (no orphan title at page bottom) */
+.print-container h1,
+.print-container h2,
+.print-container h3,
+.print-container h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Money / IDs / counts shouldn't wrap mid-number */
+.print-container .nowrap,
+.print-container [data-nowrap] {
+  white-space: nowrap;
+}
+
+/* Each clause stays in one piece across page breaks (defense — primary path
+   is `data-no-break` smart slicing in exportPdf.js) */
+.print-container li,
+.print-container .clause-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* ---------- PRINT (PDF Export) ---------- */
 @media print {
   /* force light-on-white for printable PDF regardless of theme */
