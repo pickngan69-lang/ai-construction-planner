@@ -1,0 +1,83 @@
+import ThemeToggle from './ThemeToggle'
+import ExportButton from './ExportButton'
+import { useAuth } from '../contexts/AuthContext'
+import { ROLES } from '../utils/constants'
+
+function Header({ children, onBack }) {
+  const { user, logout } = useAuth()
+
+  const roleBadge =
+    user?.role === ROLES.CONTRACTOR
+      ? { icon: '👷', label: 'ผู้รับเหมา', color: '#e07a2f' }
+      : user?.role === ROLES.HOMEOWNER
+        ? { icon: '🏠', label: 'เจ้าของบ้าน', color: '#2a9d8f' }
+        : null
+
+  // ปุ่มย้อนกลับ: ใช้ onBack ที่ page ส่งมาเป็นหลัก (in-app navigation)
+  // ถ้าไม่ส่ง onBack มา → fallback เป็น window.history.back()
+  const handleBack = () => {
+    if (typeof onBack === 'function') onBack()
+    else window.history.back()
+  }
+
+  return (
+    <header
+      data-print-hide
+      className="border-b border-line bg-surface/80 backdrop-blur sticky top-0 z-30"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          
+          {/* เพิ่มปุ่มย้อนกลับตรงนี้ */}
+          <button
+            onClick={handleBack}
+            className="mr-1 sm:mr-2 px-2 py-1.5 flex items-center gap-1.5 rounded-md hover:bg-stone-800 transition-colors text-stone-400 hover:text-stone-200 text-sm font-medium border border-transparent hover:border-stone-700"
+            title="ย้อนกลับ"
+          >
+            <span>←</span>
+            <span className="hidden sm:inline">ย้อนกลับ</span>
+          </button>
+
+          <span className="text-2xl">🏗️</span>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold text-ink leading-tight">
+              AI Construction Planner
+            </h1>
+            <p className="text-[11px] text-ink-muted hidden sm:block">
+              วางแผนก่อสร้างอัจฉริยะ • Powered by Claude
+            </p>
+          </div>
+          {roleBadge && (
+            <span
+              className="ml-2 hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+              style={{
+                backgroundColor: `${roleBadge.color}22`,
+                color: roleBadge.color,
+                border: `1px solid ${roleBadge.color}55`,
+              }}
+            >
+              {roleBadge.icon} {roleBadge.label}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {children}
+          <ExportButton />
+          <ThemeToggle />
+          {user && (
+            <button
+              type="button"
+              onClick={logout}
+              className="px-2.5 py-1.5 text-xs rounded-md border border-line text-ink-soft hover:text-ink hover:border-danger transition-colors"
+            >
+              ออก
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default Header

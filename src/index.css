@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+/* ---------- THEME TOKENS ---------- */
+@theme {
+  /* Force HEX on Tailwind v4 defaults we actually use — by default Tailwind v4
+     emits these as oklch() which old html2canvas can't parse. We use
+     html2canvas-pro now (handles oklab/oklch), but keeping HEX is
+     defense-in-depth + makes the palette uniform & predictable for PDF export. */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Stone (warm gray) — used by Header back button styles */
+  --color-stone-50: #fafaf9;
+  --color-stone-100: #f5f5f4;
+  --color-stone-200: #e7e5e4;
+  --color-stone-300: #d6d3d1;
+  --color-stone-400: #a8a29e;
+  --color-stone-500: #78716c;
+  --color-stone-600: #57534e;
+  --color-stone-700: #44403c;
+  --color-stone-800: #292524;
+  --color-stone-900: #1c1917;
+  --color-stone-950: #0c0a09;
+
+  /* Green — used by ContractTab status badge */
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+
+  /* Red, blue — common danger/info shades for safety */
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+
+  /* dark = default */
+  --color-canvas: #0c0a09;
+  --color-surface: #1c1917;
+  --color-elevated: #292524;
+  --color-line: #292524;
+  --color-line-soft: #1a1816;
+
+  --color-ink: #e7e5e4;
+  --color-ink-soft: #a8a29e;
+  --color-ink-muted: #78716c;
+
+  --color-accent: #e07a2f;
+  --color-accent-soft: #f0a368;
+  --color-success: #2a9d8f;
+  --color-danger: #e76f51;
+  --color-info: #457b9d;
+
+  --color-phase-1: #e07a2f;
+  --color-phase-2: #2a9d8f;
+  --color-phase-3: #264653;
+  --color-phase-4: #457b9d;
+  --color-phase-5: #8338ec;
+
+  --font-sans: 'Noto Sans Thai', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, Consolas, monospace;
+}
+
+/* Light theme overrides — applied when <html data-theme="light"> */
+[data-theme='light'] {
+  --color-canvas: #f8f5f1;
+  --color-surface: #ffffff;
+  --color-elevated: #f0ece7;
+  --color-line: #e0dad2;
+  --color-line-soft: #ebe6df;
+
+  --color-ink: #2a2520;
+  --color-ink-soft: #5d564f;
+  --color-ink-muted: #8d867e;
+
+  --color-accent: #c2630f;
+  --color-accent-soft: #e07a2f;
+  --color-success: #22847a;
+  --color-danger: #cc4f33;
+  --color-info: #346583;
+}
+
+/* ---------- BASE ---------- */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* scrollbars (webkit) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-elevated);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b3633;
+}
+
+/* ---------- PRINT (PDF Export) ---------- */
+@media print {
+  /* force light-on-white for printable PDF regardless of theme */
+  :root {
+    --color-canvas: #ffffff !important;
+    --color-surface: #ffffff !important;
+    --color-elevated: #f3f3f3 !important;
+    --color-line: #cccccc !important;
+    --color-ink: #000000 !important;
+    --color-ink-soft: #333333 !important;
+    --color-ink-muted: #555555 !important;
+  }
+
+  html,
+  body,
+  #root {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Hide UI chrome that shouldn't be in PDF */
+  [data-print-hide],
+  header,
+  .no-print,
+  button[type='button']:not(.print-keep) {
+    display: none !important;
+  }
+
+  /* expand truncated/scrollable areas so everything prints */
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-auto {
+    overflow: visible !important;
+  }
+
+  /* Page break controls */
+  section,
+  .print-page-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Preserve colors in pie/bar charts */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}
