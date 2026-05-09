@@ -65,7 +65,7 @@ export const PHASE_COLORS = [
   '#8338ec', // 5: ตกแต่ง
 ]
 
-export const ANTHROPIC_API_URL = https://api.anthropic.com/v1/messages
+export const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'
 // Bumped from 8k to 16k to fit BOQ + 3-tier material list (~15-20 items each)
 export const ANTHROPIC_MAX_TOKENS = 16000
