@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/Header'
 import ImageUploader from '../components/ImageUploader'
@@ -60,13 +60,17 @@ function ContractorDashboard() {
   const { step, result, error, run, reset } = useAnalysisContext()
   const { logout } = useAuth()
 
-  // เคลียร์ router state หลัง seed แล้ว กัน browser refresh มา auto-fill ซ้ำ
-  // (effect นี้ไม่มี setState จึงไม่ชน rule react-hooks/set-state-in-effect)
-  useEffect(() => {
-    if (location.state?.housePlan) {
-      window.history.replaceState({}, document.title)
-    }
-  }, [location.state])
+  // เมื่อมาจากแคตตาล็อก: ล้างผลลัพธ์เก่า + บังคับ step กลับเป็น INPUT
+  // (กันกรณีมี result ค้างใน localStorage แล้วโผล่หน้า RESULT เก่า).
+  // ใช้ useLayoutEffect เพื่อ reset ก่อน paint จึงไม่เห็นหน้า RESULT เก่าแวบ ๆ.
+  // ข้อมูล prefill (ชื่อ/งบ/รูป reference) มาจาก lazy initial state ด้านบน —
+  // reset() แตะเฉพาะ analysis context จึงยังคง auto-fill ไว้ครบ พร้อมกดวิเคราะห์.
+  useLayoutEffect(() => {
+    if (!location.state?.housePlan) return
+    reset() // clear result เก่า + step → INPUT
+    // เคลียร์ router state กัน browser refresh มา reset/auto-fill ซ้ำ
+    window.history.replaceState({}, document.title)
+  }, [location.state, reset])
 
   const gradeMultiplier =
     MATERIAL_GRADES.find((g) => g.id === projectInfo.grade)?.multiplier || 1
