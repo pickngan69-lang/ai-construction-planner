@@ -15,7 +15,13 @@ function Field({ label, children, className = '' }) {
 const inputClass =
   'w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors'
 
-function ProjectForm({ projectInfo, setProjectInfo, onAnalyze, canAnalyze }) {
+function ProjectForm({
+  projectInfo,
+  setProjectInfo,
+  onAnalyze,
+  canAnalyze,
+  useMock = false,
+}) {
   const update = (key) => (e) => {
     const raw = e.target.value
     setProjectInfo((prev) => ({ ...prev, [key]: raw }))
@@ -143,7 +149,7 @@ function ProjectForm({ projectInfo, setProjectInfo, onAnalyze, canAnalyze }) {
           disabled={!canAnalyze}
           className="w-full sm:w-auto"
         >
-          🔍 วิเคราะห์แบบบ้าน
+          {useMock ? '🧪 วิเคราะห์ (ข้อมูลทดสอบ)' : '🔍 วิเคราะห์แบบบ้าน'}
         </Button>
         {!canAnalyze && (
           <p className="text-xs text-ink-muted mt-2">

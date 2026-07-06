@@ -1,8 +1,4 @@
-import {
-  ANTHROPIC_API_URL,
-  ANTHROPIC_MODEL,
-  ANTHROPIC_MAX_TOKENS,
-} from '../utils/constants'
+import { ANTHROPIC_MODEL, ANTHROPIC_MAX_TOKENS } from '../utils/constants'
 import { repairJSON } from '../utils/jsonRepair'
 
 const SYSTEM_PROMPT = `คุณคือสถาปนิก/วิศวกรโยธาผู้เชี่ยวชาญด้านการประเมินราคาก่อสร้างบ้านในประเทศไทย
@@ -116,13 +112,10 @@ export async function analyzeHouse(images, projectInfo) {
 
   content.push({ type: 'text', text: buildProjectInfoText(projectInfo) })
 
-  const response = await fetch(ANTHROPIC_API_URL, {
+  const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { analyzeHouse } from '../services/aiService'
+import { buildMockAnalysis } from '../services/mockData'
 import { DEFAULT_TASK_DURATION_DAYS, STEPS } from '../utils/constants'
 
 const STORAGE_KEY = 'acp-analysis-v2'
@@ -196,11 +197,18 @@ export function useAnalysis() {
     deletedTaskIds,
   ])
 
-  const run = useCallback(async (images, projectInfo) => {
+  const run = useCallback(async (images, projectInfo, { mock = false } = {}) => {
     setError(null)
     setStep(STEPS.ANALYZING)
     try {
-      const data = await analyzeHouse(images, projectInfo)
+      let data
+      if (mock) {
+        // Simulate latency so the analyzing screen is briefly visible
+        await new Promise((r) => setTimeout(r, 600))
+        data = buildMockAnalysis(projectInfo)
+      } else {
+        data = await analyzeHouse(images, projectInfo)
+      }
       const next = buildResult(data, projectInfo)
       setResult(next)
       setEdits({})

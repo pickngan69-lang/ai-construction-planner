@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Header from '../components/Header'
 import ImageUploader from '../components/ImageUploader'
 import ProjectForm from '../components/ProjectForm'
+import MockToggle from '../components/MockToggle'
 import AnalyzingScreen from '../components/AnalyzingScreen'
 import ResultDashboard from '../components/ResultDashboard'
 import GuidePopup from '../components/GuidePopup'
@@ -25,13 +26,16 @@ const DEFAULT_PROJECT_INFO = {
 function ContractorDashboard() {
   const [images, setImages] = useState([])
   const [projectInfo, setProjectInfo] = useState(DEFAULT_PROJECT_INFO)
+  const [useMock, setUseMock] = useState(false)
   const { step, result, error, run, reset } = useAnalysisContext()
   const { logout } = useAuth()
 
   const gradeMultiplier =
     MATERIAL_GRADES.find((g) => g.id === projectInfo.grade)?.multiplier || 1
 
-  const handleAnalyze = () => run(images, projectInfo)
+  const handleAnalyze = () => run(images, projectInfo, { mock: useMock })
+  // Test mode lets you exercise the UI without uploading any image
+  const canAnalyze = useMock || images.length > 0
 
   // ฟังก์ชันรีเซ็ตค่าเพื่อกลับไปหน้าเริ่มแรก
   const handleReset = () => {
@@ -67,6 +71,11 @@ function ContractorDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {step === STEPS.INPUT && (
           <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-ink-soft">โหมดข้อมูล:</span>
+              <MockToggle useMock={useMock} onChange={setUseMock} />
+            </div>
+
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-xl font-semibold text-ink">
@@ -96,7 +105,8 @@ function ContractorDashboard() {
               projectInfo={projectInfo}
               setProjectInfo={setProjectInfo}
               onAnalyze={handleAnalyze}
-              canAnalyze={images.length > 0}
+              canAnalyze={canAnalyze}
+              useMock={useMock}
             />
 
             {error && (
