@@ -1,7 +1,15 @@
+import { NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import ExportButton from './ExportButton'
 import { useAuth } from '../contexts/AuthContext'
 import { ROLES } from '../utils/constants'
+
+// Main navigation — links to the app's top-level pages.
+const NAV_ITEMS = [
+  { to: '/', icon: '🔍', label: 'วิเคราะห์แบบบ้าน', end: true },
+  { to: '/catalog', icon: '🏠', label: 'แคตตาล็อกแบบบ้าน' },
+  { to: '/projects', icon: '📋', label: 'โปรเจกต์ทั้งหมด' },
+]
 
 function Header({ children, onBack }) {
   const { user, logout } = useAuth()
@@ -9,9 +17,7 @@ function Header({ children, onBack }) {
   const roleBadge =
     user?.role === ROLES.CONTRACTOR
       ? { icon: '👷', label: 'ผู้รับเหมา', color: '#e07a2f' }
-      : user?.role === ROLES.HOMEOWNER
-        ? { icon: '🏠', label: 'เจ้าของบ้าน', color: '#2a9d8f' }
-        : null
+      : null
 
   // ปุ่มย้อนกลับ: ใช้ onBack ที่ page ส่งมาเป็นหลัก (in-app navigation)
   // ถ้าไม่ส่ง onBack มา → fallback เป็น window.history.back()
@@ -27,8 +33,6 @@ function Header({ children, onBack }) {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          
-          {/* เพิ่มปุ่มย้อนกลับตรงนี้ */}
           <button
             onClick={handleBack}
             className="mr-1 sm:mr-2 px-2 py-1.5 flex items-center gap-1.5 rounded-md hover:bg-stone-800 transition-colors text-stone-400 hover:text-stone-200 text-sm font-medium border border-transparent hover:border-stone-700"
@@ -76,6 +80,31 @@ function Header({ children, onBack }) {
           )}
         </div>
       </div>
+
+      {/* Main navigation menu */}
+      {user && (
+        <nav className="border-t border-line/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                    isActive
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-ink-soft hover:text-ink hover:border-line'
+                  }`
+                }
+              >
+                <span className="mr-1.5">{item.icon}</span>
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
+      )}
     </header>
   )
 }

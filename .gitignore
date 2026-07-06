@@ -17,6 +17,12 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Python (erp-backend)
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
