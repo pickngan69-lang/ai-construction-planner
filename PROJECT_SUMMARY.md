@@ -1,7 +1,7 @@
 # PROJECT SUMMARY — AI Construction Planner
 
 > เอกสารสรุปโปรเจกต์ฉบับสมบูรณ์ (สำหรับให้ AI / นักพัฒนาคนอื่นอ่านแล้วพัฒนาต่อได้ทันที)
-> อัปเดตล่าสุด: 2026-07-06 · repo: `pickngan69-lang/ai-construction-planner` · branch: `main`
+> อัปเดตล่าสุด: 2026-07-06 · repo: `pickngan69-lang/ai-construction-planner`
 
 ---
 
@@ -11,9 +11,9 @@
 |---|---|
 | **ชื่อ** | AI Construction Planner (package: `gantt-learning`) |
 | **ภาษา UI** | ไทยทั้งหมด |
-| **วัตถุประสงค์** | เว็บแอปช่วย **ผู้รับเหมา/เจ้าของบ้านชาวไทย** วางแผนก่อสร้างบ้าน — อัปโหลดรูปแบบบ้าน + กรอกข้อมูลโปรเจกต์ → ให้ Claude (Anthropic API) วิเคราะห์ออกมาเป็น **BOQ (ราคากลาง)**, **รายการวัสดุ 3 เกรด**, **Gantt Chart แบบ interactive**, **คำแนะนำ/ความเสี่ยง**, และ **ร่างสัญญาจ้างเหมาก่อสร้าง** พร้อม **Export PDF** |
-| **โมเดล AI** | `claude-sonnet-4-6` (เรียกผ่าน **Express backend proxy** — API key ไม่หลุดฝั่ง browser) |
-| **สถาปัตยกรรม** | React SPA (frontend) + **Express backend** (`server.js`) ทำหน้าที่ proxy ซ่อน API key และ serve ไฟล์ static; state ฝั่ง client เก็บใน `localStorage` / `sessionStorage` |
+| **วัตถุประสงค์** | เว็บแอปช่วย **ผู้รับเหมาชาวไทย** วางแผนก่อสร้างบ้าน — อัปโหลดรูปแบบบ้าน + กรอกข้อมูลโปรเจกต์ → ให้ Claude (Anthropic API) วิเคราะห์ออกมาเป็น **BOQ (ราคากลาง)**, **รายการวัสดุ 3 เกรด**, **Gantt Chart แบบ interactive**, **คำแนะนำ/ความเสี่ยง**, และ **ร่างสัญญาจ้างเหมาก่อสร้าง** พร้อม **Export PDF**. นอกจากนี้มี **แคตตาล็อกแบบบ้าน** (จับคู่งบประมาณ) และ **แดชบอร์ด Mini ERP** (จัดการหลายโปรเจกต์) |
+| **โมเดล AI** | `claude-sonnet-4-6` (เรียกผ่าน **Node Express backend proxy** — API key ไม่หลุดฝั่ง browser) |
+| **สถาปัตยกรรม** | React SPA แบบ **multi-page (react-router)** + **Node Express backend** (`server.js`) เป็น proxy ซ่อน API key/serve static + **Python Flask ERP backend แยกต่างหาก** (`erp-backend/`, port 5001). State ฝั่ง client เก็บใน `localStorage` / `sessionStorage` |
 
 ### Tech Stack
 
@@ -21,13 +21,14 @@
 |---|---|
 | Framework | **React 19** (`react`, `react-dom`) |
 | Build tool | **Vite 8** (`@vitejs/plugin-react`) |
+| Routing | **react-router-dom v7** (`/`, `/catalog`, `/projects`) |
 | Styling | **Tailwind CSS 4** (ผ่าน `@tailwindcss/vite`) + CSS variables (theme dark/light) |
 | Charts | **recharts** (Pie + Bar ใน Dashboard) |
 | PDF Export | **jspdf** + **html2canvas-pro** (รองรับ CSS สมัยใหม่ oklch/color-mix) |
 | Fonts | Noto Sans Thai + DM Mono (โหลดจาก Google Fonts ใน `index.html`) |
-| Routing | **ไม่มี react-router** — ใช้ conditional render ตาม role/step |
 | State | React hooks + Context (ไม่มี Redux/Zustand) |
-| **Backend** | **Express 5** + **cors** + **dotenv** (`server.js`) — proxy `POST /api/analyze` → Anthropic, serve `dist/` |
+| **Node backend** | **Express 5** + **cors** + **dotenv** (`server.js`) — proxy `POST /api/analyze` → Anthropic, serve `dist/` |
+| **ERP backend** | **Python / Flask / Flask-SQLAlchemy / PostgreSQL** (`erp-backend/`, port 5001) — บริการแยกอิสระ (ดูข้อ 13) |
 
 ---
 
@@ -36,23 +37,30 @@
 ```
 gantt-learning/
 ├── index.html                      # HTML entry, โหลดฟอนต์ไทย, mount #root
-├── server.js                       # ⭐ Express backend — proxy POST /api/analyze (ซ่อน API key) + serve dist/
+├── server.js                       # ⭐ Node Express backend — proxy POST /api/analyze (ซ่อน API key) + serve dist/
 ├── vite.config.js                  # Vite config + dev proxy /api → backend (localhost:5000)
 ├── eslint.config.js                # ESLint (flat config)
-├── package.json                    # deps + scripts (dev/build/lint/preview)
-├── .env                            # VITE_ANTHROPIC_API_KEY (ห้าม commit — อยู่ใน .gitignore)
+├── package.json                    # deps + scripts (dev/build/start/lint/preview)
+├── .env                            # ANTHROPIC_API_KEY (ห้าม commit — อยู่ใน .gitignore)
 ├── .env.example                    # ตัวอย่าง env
 ├── PROJECT_SUMMARY.md              # ← ไฟล์นี้
+│
+├── erp-backend/                    # ⭐ Phase 2: Python Flask ERP backend (บริการแยก — ดูข้อ 13)
+│   ├── app.py                      # Flask app (port 5001) + endpoints + config PG URI จาก .env
+│   ├── models.py                   # SQLAlchemy models: Project, FinancialTracking, MaterialMarketPrice
+│   ├── requirements.txt            # Flask, Flask-SQLAlchemy, psycopg2-binary, python-dotenv, flask-cors
+│   ├── .env.example                # DATABASE_URL ตัวอย่าง
+│   └── README.md                   # วิธีติดตั้ง/รัน
 │
 ├── public/                         # static assets
 └── src/
     ├── main.jsx                    # React entry — <StrictMode><App/></StrictMode>
-    ├── App.jsx                     # Provider tree + RoleRouter (เลือกหน้าตาม role)
+    ├── App.jsx                     # Provider tree + AppRouter (react-router: /, /catalog, /projects)
     ├── index.css                   # Tailwind + CSS variables ธีม (--color-ink, --color-accent ฯลฯ)
     ├── App.css                     # (สไตล์เสริม)
     │
     ├── contexts/
-    │   ├── AuthContext.jsx         # login/logout, role (contractor/homeowner), sessionStorage
+    │   ├── AuthContext.jsx         # login/logout ผู้รับเหมา, sessionStorage
     │   ├── ThemeContext.jsx        # dark/light theme, localStorage 'acp-theme'
     │   └── AnalysisContext.jsx     # ครอบ useAnalysis() ให้ทุก component ใช้ร่วมกัน
     │
@@ -60,7 +68,7 @@ gantt-learning/
     │   └── useAnalysis.js          # ⭐ หัวใจของแอป — state engine ทั้งหมด (analyze, edits, task/material CRUD)
     │
     ├── services/
-    │   ├── aiService.js            # ⭐ เรียก Anthropic API (system prompt + schema + fetch)
+    │   ├── aiService.js            # ⭐ เรียก proxy /api/analyze (system prompt + schema + fetch)
     │   └── mockData.js             # ข้อมูลจำลองสำหรับโหมด "🧪 ทดสอบ" (ไม่เรียก API จริง)
     │
     ├── utils/
@@ -70,13 +78,14 @@ gantt-learning/
     │   ├── exportPdf.js            # ⭐ แปลง DOM → PDF หลายหน้า (html2canvas-pro + jsPDF)
     │   └── cn.js                   # helper รวม className (แบบ clsx เบาๆ)
     │
-    ├── pages/
-    │   ├── LoginPage.jsx           # หน้า login (แท็บ ผู้รับเหมา/เจ้าของบ้าน)
-    │   ├── ContractorDashboard.jsx # ⭐ flow หลักผู้รับเหมา: INPUT → ANALYZING → RESULT
-    │   └── HomeownerDashboard.jsx  # หน้าเจ้าของบ้าน (ดูความคืบหน้า/งวดงาน — ส่วนใหญ่เป็น demo)
+    ├── pages/                      # หน้าหลัก (route targets)
+    │   ├── LoginPage.jsx           # หน้า login (ผู้รับเหมาเท่านั้น — รหัสผ่าน)
+    │   ├── ContractorDashboard.jsx # ⭐ route "/" — flow วิเคราะห์: INPUT → ANALYZING → RESULT
+    │   ├── HouseCatalog.jsx        # ⭐ route "/catalog" — แคตตาล็อกแบบบ้าน + จับคู่งบประมาณ
+    │   └── MultiProjectDashboard.jsx # ⭐ route "/projects" — แดชบอร์ด Mini ERP (mock)
     │
     └── components/
-        ├── Header.jsx              # แถบบน (โลโก้, role badge, ปุ่มย้อนกลับ, Export, Theme, ออก)
+        ├── Header.jsx              # แถบบน (โลโก้, role badge, ย้อนกลับ, Export, Theme, ออก) + เมนูนำทาง (NavLink)
         ├── ImageUploader.jsx       # อัปโหลดรูป (drag&drop, สูงสุด 7 รูป, ติด tag, → base64)
         ├── ProjectForm.jsx         # ฟอร์มข้อมูลโปรเจกต์ + ปุ่มวิเคราะห์
         ├── MockToggle.jsx          # ปุ่มสลับ 🤖 AI จริง / 🧪 ทดสอบ (โหมด mock)
@@ -117,7 +126,7 @@ gantt-learning/
 
 | Context | State ที่จัดการ | ค่าที่ส่งออก |
 |---|---|---|
-| **AuthContext** | `user` `{role, name, pin?}` เก็บใน `sessionStorage['acp-auth']` | `user`, `loginContractor(password)`, `loginHomeowner(pin)`, `logout()` |
+| **AuthContext** | `user` `{role:'contractor', name}` เก็บใน `sessionStorage['acp-auth']` | `user`, `loginContractor(password)`, `logout()` |
 | **ThemeContext** | `theme` (`'dark'`\|`'light'`) → set `data-theme` บน `<html>`, เก็บ `localStorage['acp-theme']` | `theme`, `setTheme`, `toggle()` |
 | **AnalysisContext** | ครอบ `useAnalysis()` ทั้งก้อน | ทุกค่าจาก useAnalysis (ดูด้านล่าง) |
 
@@ -140,20 +149,21 @@ State หลัก (persist ลง `localStorage['acp-analysis-v2']`):
 
 > 🔑 **แนวคิด "baseline + edits":** ค่า AI คือ baseline เสมอ, การแก้ไขเก็บแยกใน `edits`/`materialEdits` — ทำให้ reset กลับไปค่า AI เดิมได้ และแสดง "AI: xxx" ขีดทับเทียบกับค่าที่แก้
 
-### Pages
+### Pages (route targets)
 
-| Component | Props | State ภายใน | หน้าที่ |
-|---|---|---|---|
-| **App** | — | — | Provider tree (`Theme→Auth→Analysis`) + `RoleRouter` |
-| **LoginPage** | — | `tab, password, pin, error` | login 2 แท็บ (ผู้รับเหมา=รหัสผ่าน / เจ้าของบ้าน=PIN 6 หลัก) |
-| **ContractorDashboard** | — | `images, projectInfo, useMock` + ดึง `step/result/error/run/reset` จาก context | flow หลัก: INPUT → ANALYZING → RESULT |
-| **HomeownerDashboard** | — | ดึง `result` จาก context | ดูภาพรวม/ความคืบหน้า/งวดงาน (ส่วนใหญ่ demo) |
+| Component | Route | Props | State ภายใน | หน้าที่ |
+|---|---|---|---|---|
+| **App** | — | — | — | Provider tree (`Theme→Auth→Analysis`) + `AppRouter` (react-router) |
+| **LoginPage** | (ก่อน login) | — | `password, error` | login ผู้รับเหมา (รหัสผ่าน) — minimalist |
+| **ContractorDashboard** | `/` | — | `images, projectInfo, useMock` + ดึง context | flow วิเคราะห์: INPUT → ANALYZING → RESULT |
+| **HouseCatalog** | `/catalog` | — | `budget` | แคตตาล็อกแบบบ้าน + ตัวกรองจับคู่งบประมาณ (ดูข้อ 12) |
+| **MultiProjectDashboard** | `/projects` | — | — (mock data) | แดชบอร์ด Mini ERP: kanban สถานะ + ค่างวด + BOQ vs จริง (ดูข้อ 12) |
 
 ### Components หลัก
 
 | Component | Props สำคัญ | State | หน้าที่ |
 |---|---|---|---|
-| **Header** | `children`, `onBack` | — | แถบบน + role badge + ปุ่ม Export/Theme/ออก |
+| **Header** | `children`, `onBack` | — | แถบบน + role badge + ปุ่ม Export/Theme/ออก + **เมนูนำทาง (NavLink: วิเคราะห์/แคตตาล็อก/โปรเจกต์)** |
 | **ImageUploader** | `images`, `setImages`, `maxFiles=7` | `dragOver, error` | drag&drop รูป → แปลงเป็น base64, ติด tag (แปลนพื้น/รูปด้าน/3D…) |
 | **ProjectForm** | `projectInfo`, `setProjectInfo`, `onAnalyze`, `canAnalyze`, `useMock` | — | ฟอร์ม (ชื่อ, พื้นที่, ชั้น, ห้องนอน/น้ำ, สไตล์, จังหวัด, งบ, เกรด, หมายเหตุ) + ปุ่มวิเคราะห์ |
 | **MockToggle** | `useMock`, `onChange` | — | สลับ 🤖 AI จริง / 🧪 ทดสอบ |
@@ -191,28 +201,38 @@ State หลัก (persist ลง `localStorage['acp-analysis-v2']`):
 
 ---
 
-## 4. Application Flow (ตั้งแต่ต้นจนจบ)
+## 4. Application Flow & Routing
+
+### Routing (react-router-dom)
+
+`App.jsx` → `AppRouter`: ถ้ายังไม่ login แสดง `LoginPage`; เมื่อ login แล้วเข้าสู่ `BrowserRouter` ที่มี 3 route:
 
 ```
 main.jsx → <App>
-             └── ThemeProvider → AuthProvider → AnalysisProvider → RoleRouter
-                                                                      │
-                    ┌─────────────────────────────────────────────────┤
-                    ▼ (ยังไม่ login)         ▼ (contractor)          ▼ (homeowner)
-                LoginPage             ContractorDashboard        HomeownerDashboard
+   └── ThemeProvider → AuthProvider → AnalysisProvider → AppRouter
+                                                            │
+                    ┌───────────────────────────────────────┤
+                    ▼ (ยังไม่ login)                        ▼ (login แล้ว = contractor)
+                LoginPage                            <BrowserRouter>
+                                                       ├── "/"         → ContractorDashboard (วิเคราะห์)
+                                                       ├── "/catalog"  → HouseCatalog
+                                                       ├── "/projects" → MultiProjectDashboard
+                                                       └── "*"         → redirect "/"
 ```
 
-### เส้นทางผู้รับเหมา (flow หลัก)
+**เมนูนำทาง (main nav):** อยู่ใน `Header.jsx` เป็นแถบ `NavLink` (🔍 วิเคราะห์แบบบ้าน · 🏠 แคตตาล็อกแบบบ้าน · 📋 โปรเจกต์ทั้งหมด) แสดงทุกหน้าเมื่อ login แล้ว มี active-state highlight ตาม route ปัจจุบัน · การ deploy รองรับ deep-link เพราะ `server.js` มี wildcard GET → `index.html` และ Vite serve index.html ทุก path
+
+### เส้นทางการใช้งานหลัก (วิเคราะห์แบบบ้าน)
 
 ```
 1. LoginPage → กรอกรหัส 'admin' → AuthContext.loginContractor() → user={role:'contractor'}
-2. ContractorDashboard step = INPUT:
+2. ContractorDashboard (route "/") step = INPUT:
    - ImageUploader: ลากรูป → base64 (สูงสุด 7) + ติด tag
    - (ทางเลือก) MockToggle: 🧪 ทดสอบ = ไม่ต้องอัปรูป, ใช้ mockData
    - ProjectForm: กรอกข้อมูล → กด "วิเคราะห์แบบบ้าน"
 3. handleAnalyze() → useAnalysis.run(images, projectInfo, {mock:useMock})
    - setStep(ANALYZING) → AnalyzingScreen แสดง
-   - mock=false: aiService.analyzeHouse() เรียก Claude API
+   - mock=false: aiService.analyzeHouse() เรียก proxy /api/analyze → Claude
      mock=true : buildMockAnalysis(projectInfo) (หน่วง 600ms)
    - data → buildResult() → เติม allTasks (schedule เริ่มต้น sequential), total_*, totalDays
    - โหลด materialEdits / materialLaborByGrade จาก AI
@@ -227,21 +247,13 @@ main.jsx → <App>
 6. "+ วิเคราะห์ใหม่" → reset() → กลับ INPUT
 ```
 
-### เส้นทางเจ้าของบ้าน
-
-```
-LoginPage (PIN 6 หลักอะไรก็ได้) → HomeownerDashboard
-   - ถ้ามี result ใน context → แสดงภาพรวม + ProgressCard + PaymentMilestones + DocumentVault
-   - ความคืบหน้า/สถานะเฟส/เอกสาร ยังเป็น DEMO (hardcoded) — ดูข้อ 11
-```
-
 ---
 
 ## 5. AI Service ([src/services/aiService.js](src/services/aiService.js))
 
 ### วิธีเรียก API (ผ่าน backend proxy — ซ่อน key)
 
-frontend เรียก **`POST /api/analyze` ของ Express backend** (`server.js`) โดยไม่แตะ API key เลย. backend เติม `x-api-key` (จาก `ANTHROPIC_API_KEY` ฝั่ง server) แล้ว forward ไป Anthropic:
+frontend เรียก **`POST /api/analyze` ของ Node Express backend** (`server.js`) โดยไม่แตะ API key เลย. backend เติม `x-api-key` (จาก `ANTHROPIC_API_KEY` ฝั่ง server) แล้ว forward ไป Anthropic:
 
 **Frontend** ([src/services/aiService.js](src/services/aiService.js)):
 ```js
@@ -325,7 +337,10 @@ app.post('/api/analyze', async (req, res) => {
 
 | ฟีเจอร์ | รายละเอียด |
 |---|---|
-| 🔐 **Login 2 role** | ผู้รับเหมา (รหัส `admin`) / เจ้าของบ้าน (PIN 6 หลัก) — demo auth, sessionStorage |
+| 🔐 **Login (ผู้รับเหมา)** | เข้าสู่ระบบด้วยรหัสผ่าน (demo: `admin`) — demo auth, sessionStorage |
+| 🧭 **Navigation (routing)** | react-router 3 หน้า: วิเคราะห์ (`/`) · แคตตาล็อก (`/catalog`) · โปรเจกต์ (`/projects`) พร้อมเมนูใน Header |
+| 🏠 **แคตตาล็อกแบบบ้าน** | รายการแบบบ้าน + ตัวกรอง "จับคู่งบประมาณ" (ดูข้อ 12) |
+| 📋 **แดชบอร์ด Mini ERP** | หลายโปรเจกต์แยกสถานะ + ค่างวด + BOQ vs ต้นทุนจริง (mock — ดูข้อ 12) |
 | 📐 **อัปโหลดรูป** | drag&drop สูงสุด 7 รูป, ติด tag (แปลนพื้น/รูปด้าน/3D/บันดาลใจ), แปลง base64 |
 | 🤖 **วิเคราะห์ด้วย AI** | ส่งรูป+ข้อมูล → Claude → BOQ + วัสดุ 3 เกรด + คำแนะนำ + ความเสี่ยง |
 | 🧪 **โหมด Mock** | สลับใช้ข้อมูลจำลอง (ไม่เรียก API, ไม่ต้องอัปรูป) — ทดสอบ UI ฟรี |
@@ -390,26 +405,32 @@ if (modeArg === 'cascade' && i > taskIndex && delta !== 0) {
 
 ## 8. การ Deploy
 
-### 8.1 Development (ต้องรัน 2 process)
+### 8.1 Development
+
+frontend + Node backend (2 process) และ ERP backend (แยก ถ้าต้องใช้):
 
 ```bash
 npm install
-node server.js     # Terminal 1: Express backend  → http://localhost:5000
-npm run dev        # Terminal 2: Vite dev server   → http://localhost:5173
+node server.js     # Terminal 1: Node Express backend  → http://localhost:5000
+npm run dev        # Terminal 2: Vite dev server        → http://localhost:5173
+
+# (ทางเลือก) ERP backend — ดูข้อ 13
+cd erp-backend && pip install -r requirements.txt && python app.py   # → :5001
 ```
 
-- ต้องมีไฟล์ `.env` ที่มี **`ANTHROPIC_API_KEY`** (ไม่มี prefix `VITE_`)
-- `vite.config.js` proxy ทุก `/api/*` → backend อัตโนมัติ:
+- ต้องมีไฟล์ `.env` (root) ที่มี **`ANTHROPIC_API_KEY`** (ไม่มี prefix `VITE_`)
+- `vite.config.js` proxy ทุก `/api/*` → Node backend อัตโนมัติ:
 
 ```js
 server: { proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: true } } }
 ```
 
 > 💡 เปิดเว็บที่ **`http://localhost:5173`** — frontend ยิง `/api/analyze` → Vite proxy → Express (`:5000`) → Anthropic. API key อยู่ฝั่ง server ไม่หลุดมา browser
+> ⚠️ ตอนต่อ ERP dashboard เข้ากับ backend จริง `/api/erp/*` จะชนกับ proxy `/api` ปัจจุบัน (ที่ชี้ไป `:5000`) — ต้องเพิ่ม proxy `/api/erp` → `:5001` แยก (ดูข้อ 14)
 
 ### 8.2 Production — **Render Web Service** (Node + server.js)
 
-หลัง refactor เป็น backend proxy แล้ว ต้อง deploy เป็น **Web Service** (ต้องเปลี่ยนจาก Static Site เดิม):
+deploy frontend + Node proxy เป็น **Web Service** (ต้องเปลี่ยนจาก Static Site เดิม):
 
 | ตั้งค่า Render | ค่า |
 |---|---|
@@ -424,6 +445,7 @@ server: { proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: true
 - Express serve static จาก `dist/` + endpoint `POST /api/analyze` ที่พอร์ตเดียวกัน (`process.env.PORT` ที่ Render กำหนดให้, local fallback 5000)
 - **API key ไม่หลุดฝั่ง client อีกต่อไป** — อยู่ใน env ฝั่ง server เท่านั้น
 - ⚠️ **ต้องลบ env เก่า `VITE_ANTHROPIC_API_KEY` ออกจาก Render** แล้วเพิ่ม `ANTHROPIC_API_KEY` แทน
+- **ERP backend** (`erp-backend/`) deploy แยกเป็นอีก service (Python + PostgreSQL) — ยังไม่ได้ deploy
 
 ---
 
@@ -431,10 +453,11 @@ server: { proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: true
 
 | ตัวแปร | ที่ตั้ง | ค่า | หมายเหตุ |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | `.env` (local) + Render env (Web Service) | `sk-ant-...` | **จำเป็น** — คีย์ Anthropic API. อยู่ฝั่ง **server เท่านั้น** (ไม่มี prefix `VITE_` จึงไม่ถูกฝังใน client bundle → ไม่หลุด) |
-| `PORT` | Render กำหนดให้เอง (local fallback 5000) | (auto) | พอร์ตที่ Express ฟัง |
+| `ANTHROPIC_API_KEY` | `.env` (root, local) + Render env | `sk-ant-...` | **จำเป็น** — คีย์ Anthropic API. อยู่ฝั่ง **Node server เท่านั้น** (ไม่มี prefix `VITE_` จึงไม่ถูกฝังใน client bundle → ไม่หลุด) |
+| `PORT` | Render กำหนดให้เอง (local fallback 5000) | (auto) | พอร์ตที่ Node Express ฟัง |
+| `DATABASE_URL` | `erp-backend/.env` | `postgresql://...` | **(ERP)** connection string PostgreSQL สำหรับ Flask backend (ดูข้อ 13) |
 
-ไฟล์ `.env` และ `.env.local` อยู่ใน `.gitignore` แล้ว (ห้าม commit) — ดู `.env.example`:
+ไฟล์ `.env`, `.env.local` และ `erp-backend/.env` อยู่ใน `.gitignore` (ห้าม commit) — ดู `.env.example`:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-xxxxx
@@ -449,11 +472,11 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 | ปัญหา | อาการ | วิธีแก้ที่ใช้ |
 |---|---|---|
 | **Model name 404** | `API error 404: not_found_error, model: claude-sonnet-4-20250514` | `claude-sonnet-4-20250514` เลิกใช้แล้ว → เปลี่ยน `ANTHROPIC_MODEL` เป็น **`claude-sonnet-4-6`** ใน [constants.js](src/utils/constants.js) (commit `e730ea8`) |
-| **CORS / เรียก API จากเบราว์เซอร์ไม่ได้** | เบราว์เซอร์บล็อกการเรียก Anthropic โดยตรง | เพิ่ม header **`anthropic-dangerous-direct-browser-access: 'true'`** + ยิงตรงไป endpoint `https://api.anthropic.com/v1/messages` (commits `87b243f`, `dce6a14`) |
-| **API key หลุดฝั่ง client** | คีย์ `VITE_ANTHROPIC_API_KEY` ถูก inline ใน bundle → ใครเปิดเว็บก็ดึงไปใช้ได้ | ✅ **แก้แล้ว** — refactor เป็น Express backend proxy (`server.js`): ย้าย key เป็น `ANTHROPIC_API_KEY` ฝั่ง server, frontend เรียกผ่าน `/api/analyze` (ดูข้อ 5/8) |
+| **CORS / เรียก API จากเบราว์เซอร์ไม่ได้** | เบราว์เซอร์บล็อกการเรียก Anthropic โดยตรง | (เดิม) เพิ่ม header `anthropic-dangerous-direct-browser-access` → **ปัจจุบันเลิกใช้** เพราะย้ายไปเรียกผ่าน backend proxy แล้ว |
+| **API key หลุดฝั่ง client** | คีย์ `VITE_ANTHROPIC_API_KEY` ถูก inline ใน bundle → ใครเปิดเว็บก็ดึงไปใช้ได้ | ✅ **แก้แล้ว** — refactor เป็น Node Express backend proxy (`server.js`): ย้าย key เป็น `ANTHROPIC_API_KEY` ฝั่ง server, frontend เรียกผ่าน `/api/analyze` (ดูข้อ 5/8) |
 | **JSON truncated** | AI ตอบ JSON ไม่ครบ (โดนตัดกลางคัน) → `JSON.parse` fail | (1) `repairJSON()` — ตัด fragment ค้าง + เติมวงเล็บ/ปีกกาที่ขาดให้ balance; (2) เพิ่ม `max_tokens` จาก 8k → **16k** เพื่อให้พอสำหรับ BOQ + วัสดุ 3 เกรด |
-| **แก้หน้าสัญญา** | (commit `caab3b9`) ปรับ ContractDocument/ContractTab | — |
-| **พิมพ์ตกตัวอักษร ImageUploader** | (commits `dd4e863`, `b290c09`) แก้ typo | — |
+| **Express 5 wildcard route** | `app.get('*', ...)` แบบเดิม crash บน Express 5 (path-to-regexp v8) | ใช้ regex wildcard `app.get(/.*/, ...)` แทน สำหรับ SPA fallback ใน `server.js` |
+| **npm EINTEGRITY** | `npm install` ล้มเพราะ checksum ไม่ตรง | `npm cache clean --force` แล้วติดตั้งใหม่ |
 
 ### `repairJSON` (หัวใจการกัน JSON พัง)
 
@@ -470,22 +493,105 @@ return JSON.parse(fixed)
 ## 11. สิ่งที่ยังไม่ได้ทำ / ควรทำต่อ
 
 ### 🟢 เสร็จแล้ว (ความปลอดภัย)
-1. ✅ **ซ่อน API key ด้วย backend proxy** — ทำเสร็จแล้ว: Express `server.js` (`POST /api/analyze`) เรียก Anthropic ฝั่ง server ด้วย `ANTHROPIC_API_KEY`, frontend เรียกผ่าน `/api/analyze` (ไม่มี `VITE_` แล้ว). **เหลือแค่ปรับ Render เป็น Web Service + ตั้ง env `ANTHROPIC_API_KEY`** (ดูข้อ 8.2)
+1. ✅ **ซ่อน API key ด้วย backend proxy** — Node Express `server.js` (`POST /api/analyze`) เรียก Anthropic ฝั่ง server ด้วย `ANTHROPIC_API_KEY`, frontend เรียกผ่าน `/api/analyze`. **เหลือแค่ปรับ Render เป็น Web Service + ตั้ง env `ANTHROPIC_API_KEY`** (ดูข้อ 8.2)
 
 ### 🟠 ความถูกต้องของข้อมูล
 2. **`permits` ไม่อยู่ใน AI schema** — UI แสดง "ใบอนุญาตที่ต้องมี" แต่ system prompt ไม่ได้สั่งให้ AI ส่ง `permits` (มีเฉพาะ mock). ควรเพิ่ม `permits: ["string"]` เข้า schema ใน `SYSTEM_PROMPT` หรือเอาการ์ด permits ออก
 3. **Gantt schedule ไม่ sync กลับ BOQ/context** — การลากปรับวันใน Gantt เป็น state แยก (`ganttTasks`) ไม่ย้อนกลับไป `edits`. ถ้าต้องการให้ตารางที่ลากมีผลต่อ BOQ/สัญญา ต้องเชื่อม `onTasksChange` → `updateTask` ใน context
 
 ### 🟡 ความสมบูรณ์ของฟีเจอร์
-4. **Auth เป็น demo เท่านั้น** — รหัสผ่านผู้รับเหมา hardcode `'admin'` ([DEMO_CONTRACTOR_PASSWORD](src/utils/constants.js)), PIN เจ้าของบ้านรับตัวเลข 6 หลักอะไรก็ได้. ต้องต่อ backend auth จริงก่อน production
-5. **HomeownerDashboard ส่วนใหญ่เป็น demo** — สถานะเฟส (`DEMO_PHASE_STATUS`), เอกสาร (`DEMO_DOCS`), ความคืบหน้า เป็นค่า hardcoded. ต้องต่อระบบอัปเดตสถานะจริงจากผู้รับเหมา
-6. **ไม่มี backend/DB** — ข้อมูลอยู่แค่ localStorage ต่อ browser/เครื่อง. เจ้าของบ้านกับผู้รับเหมาไม่ได้แชร์ข้อมูลกันจริง (คนละ localStorage). ควรมี backend + โครงการที่ผูก user
-7. **โหมด Mock ยังไม่ commit/deploy** — ณ เวลาที่เขียนเอกสารนี้ ไฟล์ `mockData.js` + `MockToggle.jsx` และการแก้ `useAnalysis/ContractorDashboard/ProjectForm` ยัง**ไม่ได้ commit ขึ้น GitHub** (ต้อง push ก่อนถึงจะขึ้นเว็บจริง)
+4. **Auth เป็น demo เท่านั้น** — รหัสผ่านผู้รับเหมา hardcode `'admin'` ([DEMO_CONTRACTOR_PASSWORD](src/utils/constants.js)). ต้องต่อ backend auth จริงก่อน production
+5. **แคตตาล็อก & ERP dashboard ยังเป็น mock** — `HouseCatalog` ปุ่ม "เลือกแบบบ้านนี้" แค่พาไปหน้าวิเคราะห์ (ยังไม่ prefill), `MultiProjectDashboard` ใช้ mock data. ต้องต่อกับ ERP backend (ดูข้อ 13/14)
+6. **ไม่มี persistence ข้ามเครื่อง (frontend)** — ผลวิเคราะห์อยู่แค่ localStorage. ERP backend (PostgreSQL) จะเป็นที่เก็บข้อมูลจริงข้ามผู้ใช้/เครื่อง
 
 ### 🟢 ปรับปรุงเสริม
-8. Bundle ใหญ่ (~1.35MB) — พิจารณา code-splitting (โดยเฉพาะ recharts, jspdf, html2canvas)
-9. README ยังเป็น template เริ่มต้นของ Vite — ควรเขียนใหม่ให้ตรงโปรเจกต์
-10. เพิ่ม unit test (ตอนนี้ไม่มี test เลย)
+7. Bundle ใหญ่ (~1.4MB) — พิจารณา code-splitting (โดยเฉพาะ recharts, jspdf, html2canvas)
+8. เพิ่ม unit test (ตอนนี้ไม่มี test เลย)
+9. Lint มี error เดิม (pre-existing) ในไฟล์ context (`react-refresh/only-export-components`) — แยก hook ออกจากไฟล์ provider เพื่อแก้
+
+---
+
+## 12. หน้าใหม่: แคตตาล็อก & แดชบอร์ด ERP (Frontend)
+
+### 12.1 HouseCatalog ([src/pages/HouseCatalog.jsx](src/pages/HouseCatalog.jsx)) — route `/catalog`
+
+แคตตาล็อกแบบบ้านพร้อมตัวกรอง **"จับคู่งบประมาณ"**:
+- **Mock data** `HOUSE_PLANS` — 5 แบบ (id, title, imageUrl, budget, area, beds, baths, description)
+- **Budget Matching:** input "💰 ระบุงบประมาณของคุณ" → กรองแสดงเฉพาะ `plan.budget <= งบที่กรอก` (ว่าง = แสดงทั้งหมด) + แสดงจำนวนที่พบ + ปุ่มล้างตัวกรอง
+- **การ์ดแบบบ้าน:** รูป (มี `onError` fallback เป็น emoji 🏠 ถ้ารูปโหลดไม่ได้), ป้ายราคา, สเปก, รายละเอียด, ปุ่ม **"เลือกแบบบ้านนี้"** → `navigate('/')` ไปหน้าวิเคราะห์
+- **Empty state** เมื่อไม่พบแบบในงบ
+
+```js
+const filtered = useMemo(
+  () => (maxBudget > 0 ? HOUSE_PLANS.filter((p) => p.budget <= maxBudget) : HOUSE_PLANS),
+  [maxBudget],
+)
+```
+
+### 12.2 MultiProjectDashboard ([src/pages/MultiProjectDashboard.jsx](src/pages/MultiProjectDashboard.jsx)) — route `/projects`
+
+แดชบอร์ด Mini ERP (mock) รวมภาพรวมหลายโปรเจกต์:
+- **Mock data** `MOCK_PROJECTS` — 6 โปรเจกต์ (id, name, client, status, boqBudget, actualCost, installmentPaid, installmentTotal)
+- **Summary stat cards:** จำนวนโปรเจกต์ · มูลค่างานรวม · กำไรสะสม (โดยประมาณ)
+- **Kanban 3 สถานะ:** `กำลังประเมินราคา` (estimating) · `ระหว่างก่อสร้าง` (building) · `ส่งมอบแล้ว` (delivered) — การ์ดโปรเจกต์แยกคอลัมน์
+- **ค่างวดงาน (Installment Tracking):** progress bar จ่ายแล้ว/ยอดรวม ต่อโปรเจกต์
+- **BOQ vs ต้นทุนจริง (กำไร-ขาดทุน):** แท่งเทียบ BOQ กับต้นทุนจริง + ป้าย 📈 กำไร / 📉 ขาดทุน (ถ้า actual > boq)
+
+> ทั้ง 2 หน้าใช้ `Header` (มีเมนูนำทาง) + design tokens เดิม (Card, bg-surface, accent) และเป็น **mock ล้วน** — จุดเชื่อมต่อ ERP backend คือข้อ 13/14
+
+---
+
+## 13. ERP Backend Scaffold ([erp-backend/](erp-backend/))
+
+บริการ **แยกอิสระ** (Python/Flask/PostgreSQL) สำหรับโมดูล ERP — **ไม่เกี่ยวกับ** Node proxy (`server.js`). รันที่ **port 5001**.
+
+### ไฟล์
+
+| ไฟล์ | หน้าที่ |
+|---|---|
+| [erp-backend/app.py](erp-backend/app.py) | Flask app (factory `create_app`), CORS, อ่าน `DATABASE_URL` จาก `.env`, `db.create_all()` ตอนรัน, port 5001 |
+| [erp-backend/models.py](erp-backend/models.py) | SQLAlchemy models (`db = SQLAlchemy()` + 3 models) |
+| [erp-backend/requirements.txt](erp-backend/requirements.txt) | `Flask`, `Flask-SQLAlchemy`, `psycopg2-binary`, `python-dotenv`, `flask-cors` |
+| erp-backend/.env.example | `DATABASE_URL=postgresql://...` |
+| erp-backend/README.md | วิธีติดตั้ง/รัน |
+
+### Endpoints
+
+| Method | Path | หน้าที่ |
+|---|---|---|
+| GET | `/api/erp/health` | health check |
+| GET | `/api/erp/projects` | list โปรเจกต์ |
+| GET | `/api/erp/materials` | list ราคาวัสดุตลาด |
+
+### Models (`models.py`)
+
+```python
+class Project(db.Model):            # projects
+    id, name, status
+class FinancialTracking(db.Model):  # financial_tracking
+    id, project_id (FK→projects), boq_budget, actual_cost, total_installment_paid
+class MaterialMarketPrice(db.Model):# material_market_prices
+    id, material_name, current_price, last_updated
+```
+
+### รัน
+
+```bash
+cd erp-backend
+python -m venv venv && venv\Scripts\activate    # (Windows)
+pip install -r requirements.txt
+cp .env.example .env    # แก้ DATABASE_URL
+python app.py           # http://localhost:5001  (ต้องมี PostgreSQL รันอยู่)
+```
+
+---
+
+## 14. จุดที่ยังไม่เชื่อมต่อ (Integration TODO)
+
+1. **Frontend ↔ ERP backend ยังไม่เชื่อม** — `MultiProjectDashboard` ใช้ mock; ต้องเรียก `/api/erp/*` (port 5001) จริง
+2. **Dev proxy ชนกัน** — Vite proxy `/api` ปัจจุบันชี้ไป Node `:5000`; ต้องเพิ่ม `/api/erp` → `:5001` แยก (หรือให้ frontend เรียก `:5001` ตรง + CORS)
+3. **ERP ยังไม่มี write endpoints / seed data** — มีแค่ GET (health/projects/materials); ต้องเพิ่ม POST/PUT + ข้อมูลตั้งต้น
+4. **ยังไม่ deploy ERP** — ต้อง provision PostgreSQL + deploy Flask แยก
 
 ---
 
@@ -493,11 +599,11 @@ return JSON.parse(fixed)
 
 ```js
 STEPS = { INPUT:'input', ANALYZING:'analyzing', RESULT:'result' }
-ROLES = { CONTRACTOR:'contractor', HOMEOWNER:'homeowner' }
+ROLES = { CONTRACTOR:'contractor', HOMEOWNER:'homeowner' }  // HOMEOWNER = legacy (login ถูกลบแล้ว, คงค่าไว้เฉยๆ)
 DEMO_CONTRACTOR_PASSWORD = 'admin'
 ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 ANTHROPIC_MAX_TOKENS = 16000
-ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
+ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'  // (เหลือเป็นค่าคงที่ ไม่ได้ใช้แล้วฝั่ง client — ย้ายไป server.js)
 DEFAULT_TASK_DURATION_DAYS = 7
 
 MATERIAL_GRADES = [
