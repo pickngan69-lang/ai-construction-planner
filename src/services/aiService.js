@@ -96,14 +96,13 @@ export async function analyzeHouse(images, projectInfo) {
   const content = []
 
   images.forEach((img, i) => {
-    content.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: img.mediaType,
-        data: img.base64,
-      },
-    })
+    // Catalog reference images carry a remote URL (Anthropic fetches it
+    // server-side); uploaded images carry base64 data.
+    const source =
+      img.sourceType === 'url' && img.url
+        ? { type: 'url', url: img.url }
+        : { type: 'base64', media_type: img.mediaType, data: img.base64 }
+    content.push({ type: 'image', source })
     content.push({
       type: 'text',
       text: `รูปที่ ${i + 1}: ${img.tag || 'ไม่ระบุ'}`,

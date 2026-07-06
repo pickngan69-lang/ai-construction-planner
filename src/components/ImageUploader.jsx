@@ -73,7 +73,11 @@ function ImageUploader({ images, setImages, maxFiles = 7 }) {
   const removeImage = (id) => {
     setImages((prev) => {
       const target = prev.find((img) => img.id === id)
-      if (target?.preview) URL.revokeObjectURL(target.preview)
+      // Only uploaded files use object URLs; catalog reference images use a
+      // plain remote URL that must not be revoked.
+      if (target?.preview?.startsWith('blob:')) {
+        URL.revokeObjectURL(target.preview)
+      }
       return prev.filter((img) => img.id !== id)
     })
   }

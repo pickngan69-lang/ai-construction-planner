@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Header from '../components/Header'
 import ImageUploader from '../components/ImageUploader'
 import ProjectForm from '../components/ProjectForm'
@@ -24,11 +25,48 @@ const DEFAULT_PROJECT_INFO = {
 }
 
 function ContractorDashboard() {
-  const [images, setImages] = useState([])
-  const [projectInfo, setProjectInfo] = useState(DEFAULT_PROJECT_INFO)
+  const location = useLocation()
+  // แบบบ้านที่ส่งมาจากแคตตาล็อก (ผ่าน router state) — ใช้ seed ค่าเริ่มต้นของฟอร์ม
+  const catalogPlan = location.state?.housePlan || null
+
+  // Auto-fill จากแคตตาล็อก: seed ตอน mount เลย (lazy initial state) — ตั้งชื่อ/งบ
+  // และเพิ่มรูปแบบบ้านเป็น reference image (sourceType 'url') ให้กดวิเคราะห์ได้ทันที
+  const [images, setImages] = useState(() =>
+    catalogPlan?.imageUrl
+      ? [
+          {
+            id: `catalog-${Date.now()}`,
+            preview: catalogPlan.imageUrl,
+            url: catalogPlan.imageUrl,
+            sourceType: 'url',
+            tag: 'ภาพบันดาลใจ',
+          },
+        ]
+      : [],
+  )
+  const [projectInfo, setProjectInfo] = useState(() =>
+    catalogPlan
+      ? {
+          ...DEFAULT_PROJECT_INFO,
+          name: catalogPlan.title || '',
+          budget: catalogPlan.budget != null ? String(catalogPlan.budget) : '',
+        }
+      : DEFAULT_PROJECT_INFO,
+  )
   const [useMock, setUseMock] = useState(false)
+  const [catalogTitle, setCatalogTitle] = useState(
+    () => catalogPlan?.title || null,
+  )
   const { step, result, error, run, reset } = useAnalysisContext()
   const { logout } = useAuth()
+
+  // เคลียร์ router state หลัง seed แล้ว กัน browser refresh มา auto-fill ซ้ำ
+  // (effect นี้ไม่มี setState จึงไม่ชน rule react-hooks/set-state-in-effect)
+  useEffect(() => {
+    if (location.state?.housePlan) {
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   const gradeMultiplier =
     MATERIAL_GRADES.find((g) => g.id === projectInfo.grade)?.multiplier || 1
@@ -42,6 +80,7 @@ function ContractorDashboard() {
     reset() // สั่ง Context ให้กลับไป Step.INPUT
     setImages([]) // ล้างรูปเก่า
     setProjectInfo(DEFAULT_PROJECT_INFO) // ล้างข้อมูลฟอร์ม
+    setCatalogTitle(null)
   }
 
   const handleGradeChange = (grade) =>
@@ -75,6 +114,16 @@ function ContractorDashboard() {
               <span className="text-sm text-ink-soft">โหมดข้อมูล:</span>
               <MockToggle useMock={useMock} onChange={setUseMock} />
             </div>
+
+            {catalogTitle && (
+              <div className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent flex flex-wrap items-center gap-2">
+                🏠 <span className="font-medium">เลือกจากแคตตาล็อก:</span>
+                <span>{catalogTitle}</span>
+                <span className="text-ink-muted text-xs">
+                  — เติมชื่อ/งบ + ตั้งรูป reference ให้อัตโนมัติแล้ว กด "วิเคราะห์แบบบ้าน" ได้เลย
+                </span>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center gap-2 mb-2">
