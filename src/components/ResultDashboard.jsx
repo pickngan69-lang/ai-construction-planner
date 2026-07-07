@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Tabs from './ui/Tabs'
 import GradeSelector from './ui/GradeSelector'
 import Card from './ui/Card'
@@ -13,6 +14,8 @@ import MaterialTab from './tabs/MaterialTab'
 import RecommendTab from './tabs/RecommendTab'
 import ContractTab from './tabs/ContractTab' // แทรกไฟล์สัญญาเข้ามาแล้ว
 import { useAnalysisContext } from '../contexts/AnalysisContext'
+import { useProjects } from '../contexts/ProjectContext'
+import { DEFAULT_INSTALLMENTS } from '../data/mockProjects'
 import { formatBaht, formatDays } from '../utils/formatters'
 
 // Map AI-result tasks → InteractiveGantt task shape
@@ -126,6 +129,8 @@ function ResultDashboard({
     addTask,
     deleteTask,
   } = useAnalysisContext()
+  const navigate = useNavigate()
+  const { addProject } = useProjects()
 
   // Hoist InteractiveGantt's tasks state so it survives tab switches
   const [ganttTasks, setGanttTasks] = useState(() =>
@@ -393,6 +398,33 @@ function ResultDashboard({
     (adjustedResult.total_material_cost_adjusted || 0) +
     (adjustedResult.total_labor_cost || 0)
 
+  // บันทึกผลวิเคราะห์เป็นโปรเจกต์ใหม่ (สถานะ 'กำลังประเมินราคา') เข้ากระดาน แล้วกลับ Dashboard
+  const handleSaveProject = () => {
+    const houseInfo = adjustedResult.house_analysis || {}
+    const budget = Number(projectInfo.budget) || Math.round(totalCost)
+    const cover = images?.find((f) => f.kind === 'image' && (f.url || f.preview))
+    addProject({
+      id: `PJ-${Date.now().toString(36)}`,
+      name: projectInfo.name?.trim() || houseInfo.type || 'โปรเจกต์ใหม่',
+      client: '',
+      status: 'estimating',
+      area: Number(projectInfo.area) || houseInfo.estimated_size_sqm || 0,
+      floors: Number(projectInfo.floors) || houseInfo.floors || 1,
+      beds: Number(projectInfo.bedrooms) || 0,
+      baths: Number(projectInfo.bathrooms) || 0,
+      style: projectInfo.style || houseInfo.style || '-',
+      boqBudget: budget,
+      actualCost: 0,
+      progress: 0,
+      installmentPaid: 0,
+      installmentTotal: budget,
+      installments: DEFAULT_INSTALLMENTS.map((i) => ({ ...i })),
+      imageUrl: cover?.url || cover?.preview || null,
+      createdAt: Date.now(),
+    })
+    navigate('/projects')
+  }
+
   const hasEdits =
     Object.keys(edits).length > 0 ||
     addedTasks.length > 0 ||
@@ -480,6 +512,16 @@ function ResultDashboard({
       data-export-project={exportProjectName}
       data-export-orientation={tab === 'gantt' ? 'landscape' : 'portrait'}
     >
+      <div className="flex justify-end" data-print-hide>
+        <button
+          type="button"
+          onClick={handleSaveProject}
+          className="px-4 py-2 rounded-md bg-accent text-canvas text-sm font-medium hover:bg-accent-soft transition-colors"
+        >
+          💾 บันทึกเข้ากระดานโปรเจกต์
+        </button>
+      </div>
+
       <SummaryHeader
         result={adjustedResult}
         images={images}

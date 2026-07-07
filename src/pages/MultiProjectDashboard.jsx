@@ -4,10 +4,10 @@ import Header from '../components/Header'
 import Card from '../components/ui/Card'
 import { formatBaht, formatBahtCompact } from '../utils/formatters'
 import {
-  MOCK_PROJECTS,
   PROJECT_STATUSES as STATUSES,
   STATUS_META,
 } from '../data/mockProjects'
+import { useProjects } from '../contexts/ProjectContext'
 
 function StatCard({ icon, label, value, accent }) {
   return (
@@ -128,28 +128,38 @@ function ProfitRow({ project }) {
 
 function MultiProjectDashboard() {
   const navigate = useNavigate()
+  const { projects } = useProjects()
   const handleOpen = (pid) => navigate(`/project/${pid}`)
 
   const summary = useMemo(() => {
-    const totalValue = MOCK_PROJECTS.reduce((s, p) => s + p.boqBudget, 0)
+    const totalValue = projects.reduce((s, p) => s + p.boqBudget, 0)
     // profit only meaningful once there's actual cost (building/delivered)
-    const withActual = MOCK_PROJECTS.filter((p) => p.actualCost > 0)
+    const withActual = projects.filter((p) => p.actualCost > 0)
     const profit = withActual.reduce((s, p) => s + (p.boqBudget - p.actualCost), 0)
-    return { count: MOCK_PROJECTS.length, totalValue, profit }
-  }, [])
+    return { count: projects.length, totalValue, profit }
+  }, [projects])
 
   // projects that have started incurring cost — used by both finance sections
-  const activeProjects = MOCK_PROJECTS.filter((p) => p.status !== 'estimating')
+  const activeProjects = projects.filter((p) => p.status !== 'estimating')
 
   return (
     <>
       <Header onBack={() => navigate('/')} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-ink">แดชบอร์ดโปรเจกต์ (Mini ERP)</h2>
-          <p className="text-sm text-ink-muted mt-1">
-            ภาพรวมโปรเจกต์ลูกค้าทั้งหมด สถานะงาน ค่างวด และกำไร-ขาดทุน
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-ink">แดชบอร์ดโปรเจกต์ (Mini ERP)</h2>
+            <p className="text-sm text-ink-muted mt-1">
+              ภาพรวมโปรเจกต์ลูกค้าทั้งหมด สถานะงาน ค่างวด และกำไร-ขาดทุน
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/catalog')}
+            className="shrink-0 px-4 py-2 rounded-md bg-accent text-canvas text-sm font-medium hover:bg-accent-soft transition-colors"
+          >
+            + สร้างโปรเจกต์ใหม่
+          </button>
         </div>
 
         {/* Summary */}
@@ -162,7 +172,7 @@ function MultiProjectDashboard() {
         {/* Kanban by status */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {STATUSES.map((s) => {
-            const projects = MOCK_PROJECTS.filter((p) => p.status === s.key)
+            const colProjects = projects.filter((p) => p.status === s.key)
             return (
               <Card key={s.key} className="p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -173,13 +183,13 @@ function MultiProjectDashboard() {
                     />
                     {s.icon} {s.label}
                   </h3>
-                  <span className="text-xs text-ink-muted">{projects.length}</span>
+                  <span className="text-xs text-ink-muted">{colProjects.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {projects.length === 0 ? (
+                  {colProjects.length === 0 ? (
                     <p className="text-xs text-ink-muted py-4 text-center">— ไม่มีโปรเจกต์ —</p>
                   ) : (
-                    projects.map((p) => (
+                    colProjects.map((p) => (
                       <ProjectCard key={p.id} project={p} onOpen={handleOpen} />
                     ))
                   )}

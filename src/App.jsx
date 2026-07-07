@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { AnalysisProvider } from './contexts/AnalysisContext'
+import { ProjectProvider } from './contexts/ProjectContext'
 import LoginPage from './pages/LoginPage'
 import ContractorDashboard from './pages/ContractorDashboard'
 import HouseCatalog from './pages/HouseCatalog'
@@ -20,47 +21,49 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <AnalysisProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* หน้าลูกค้า (Magic Link) — public เข้าได้โดยไม่ต้อง login */}
-              <Route path="/shared/:id" element={<CustomerSummary />} />
+          <ProjectProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* หน้าลูกค้า (Magic Link) — public เข้าได้โดยไม่ต้อง login */}
+                <Route path="/shared/:id" element={<CustomerSummary />} />
 
-              {/* หน้าฝั่งผู้รับเหมา — ต้อง login */}
-              <Route
-                path="/"
-                element={
-                  <RequireAuth>
-                    <ContractorDashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/catalog"
-                element={
-                  <RequireAuth>
-                    <HouseCatalog />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/projects"
-                element={
-                  <RequireAuth>
-                    <MultiProjectDashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/project/:id"
-                element={
-                  <RequireAuth>
-                    <ProjectDetail />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+                {/* หน้าฝั่งผู้รับเหมา — ต้อง login */}
+                <Route
+                  path="/"
+                  element={
+                    <RequireAuth>
+                      <ContractorDashboard />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/catalog"
+                  element={
+                    <RequireAuth>
+                      <HouseCatalog />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/projects"
+                  element={
+                    <RequireAuth>
+                      <MultiProjectDashboard />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/project/:id"
+                  element={
+                    <RequireAuth>
+                      <ProjectDetail />
+                    </RequireAuth>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </ProjectProvider>
         </AnalysisProvider>
       </AuthProvider>
     </ThemeProvider>

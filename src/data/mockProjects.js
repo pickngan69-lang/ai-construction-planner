@@ -114,6 +114,14 @@ export function installmentAmount(project, inst) {
   return Math.round((project.boqBudget * (Number(inst.percent) || 0)) / 100)
 }
 
+// เทมเพลตงวดงานเริ่มต้น (ใช้ตอนสร้างโปรเจกต์ใหม่จากผลวิเคราะห์ AI)
+export const DEFAULT_INSTALLMENTS = [
+  { no: 1, label: 'เงินมัดจำ ณ วันทำสัญญา', percent: 20, status: 'upcoming', date: null },
+  { no: 2, label: 'งานโครงสร้าง + หลังคา', percent: 30, status: 'upcoming', date: null },
+  { no: 3, label: 'งานสถาปัตย์ + ระบบ', percent: 40, status: 'upcoming', date: null },
+  { no: 4, label: 'ตรวจรับ + ส่งมอบงาน', percent: 10, status: 'upcoming', date: null },
+]
+
 /**
  * 🔒 มุมมองสำหรับ "ลูกค้า" (Magic Link) — โปรเจกต์นี้ตั้งใจ **ตัด** ข้อมูลต้นทุน
  * ฝั่งผู้รับเหมาออกทั้งหมด: ไม่มี actualCost และไม่มี profit เด็ดขาด

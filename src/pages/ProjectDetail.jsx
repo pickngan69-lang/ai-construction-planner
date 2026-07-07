@@ -12,7 +12,8 @@ import {
 } from 'recharts'
 import Header from '../components/Header'
 import Card from '../components/ui/Card'
-import { getProjectById, installmentAmount, STATUS_META } from '../data/mockProjects'
+import { installmentAmount, STATUS_META } from '../data/mockProjects'
+import { useProjects } from '../contexts/ProjectContext'
 import { formatBaht, formatBahtCompact } from '../utils/formatters'
 
 const INSTALLMENT_STATUS = {
@@ -58,7 +59,8 @@ function ChartTooltip({ active, payload }) {
 function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const project = getProjectById(id)
+  const { getProject } = useProjects()
+  const project = getProject(id)
   const [copied, setCopied] = useState(false)
 
   const magicLink = `${window.location.origin}/shared/${id}`
