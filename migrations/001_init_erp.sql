@@ -1,8 +1,7 @@
 -- ============================================================================
--- Mini ERP — Database schema (PostgreSQL / Supabase)
--- วิธีใช้: เปิด Supabase → SQL Editor → วางทั้งไฟล์นี้ → Run
--- ตรงกับ models.py: Project, FinancialTracking, MaterialMarketPrice
--- (เป็นทางเลือกแทนการรัน `flask db upgrade` — เลือกอย่างใดอย่างหนึ่ง)
+-- Migration 001 — ERP core (โมดูล ERP)
+-- PostgreSQL / Supabase · รันใน Supabase → SQL Editor → Run
+-- ตรงกับ erp-backend/models.py: Project, FinancialTracking, MaterialMarketPrice
 -- ============================================================================
 
 -- 1) projects -----------------------------------------------------------------

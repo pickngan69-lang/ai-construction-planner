@@ -37,7 +37,7 @@ flask db upgrade                       # apply เข้า Supabase
 > ครั้งต่อไปที่แก้ `models.py`: `flask db migrate -m "..."` แล้ว `flask db upgrade`
 > (flask ตรวจเจอ `app.py` อัตโนมัติ; ถ้าไม่เจอให้ตั้ง `FLASK_APP=app.py`)
 
-**หรือ (ทางเลือกที่เร็วกว่า):** วางไฟล์ [`schema.sql`](schema.sql) ใน **Supabase → SQL Editor → Run** — สร้างตารางครบ + เปิด RLS + ใส่ข้อมูลตัวอย่างให้เลย โดยข้ามขั้น Flask-Migrate (เลือกอย่างใดอย่างหนึ่ง)
+**หรือ (ทางเลือกที่เร็วกว่า):** วางไฟล์ [`migrations/001_init_erp.sql`](../migrations/001_init_erp.sql) ใน **Supabase → SQL Editor → Run** — สร้างตารางครบ + เปิด RLS + ใส่ข้อมูลตัวอย่างให้เลย โดยข้ามขั้น Flask-Migrate (เลือกอย่างใดอย่างหนึ่ง) · ดู [`migrations/README.md`](../migrations/README.md) สำหรับกติกาการเพิ่มไฟล์ของทีม
 
 ## 4. Run
 
