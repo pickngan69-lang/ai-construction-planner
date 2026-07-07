@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Card from '../components/ui/Card'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import SaveProjectModal from '../components/SaveProjectModal'
 import { formatBaht, formatBahtCompact } from '../utils/formatters'
 import {
   PROJECT_STATUSES as STATUSES,
@@ -30,32 +32,88 @@ function StatCard({ icon, label, value, accent }) {
   )
 }
 
-function ProjectCard({ project, onOpen }) {
-  const meta = STATUS_META[project.status]
+function ProjectCard({
+  project,
+  onOpen,
+  menuOpen,
+  onToggleMenu,
+  onEdit,
+  onComplete,
+  onCancel,
+}) {
+  const meta = STATUS_META[project.status] || STATUS_META.estimating
+
+  // ปิดเมนู + หยุด bubble ไม่ให้ไปเปิดหน้ารายละเอียด แล้วเรียก action
+  const act = (fn) => (e) => {
+    e.stopPropagation()
+    onToggleMenu()
+    fn(project)
+  }
+
   return (
-    <button
-      type="button"
+    <div
       onClick={() => onOpen(project.id)}
-      className="w-full text-left rounded-lg border border-line bg-elevated/30 p-4 hover:border-accent hover:bg-elevated/50 transition-colors"
+      className="relative rounded-lg border border-line bg-elevated/30 p-4 cursor-pointer hover:border-accent hover:bg-elevated/50 transition-colors"
       style={{ borderLeft: `3px solid ${meta.color}` }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium text-ink">{project.name}</p>
-        <span className="text-[10px] font-mono text-ink-muted shrink-0">
-          {project.id}
-        </span>
-      </div>
-      <p className="text-xs text-ink-muted mt-0.5">
-        👤 {project.customerName || project.client}
-      </p>
-      {project.location && (
-        <p className="text-xs text-ink-muted mt-0.5">📍 {project.location}</p>
+      {/* Kebab menu */}
+      <button
+        type="button"
+        aria-label="ตัวเลือกโปรเจกต์"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleMenu()
+        }}
+        className="absolute top-2 right-2 w-7 h-7 rounded-md text-ink-muted hover:text-ink hover:bg-elevated flex items-center justify-center leading-none"
+      >
+        ⋮
+      </button>
+      {menuOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-9 right-2 z-20 w-44 rounded-lg border border-line bg-surface shadow-xl py-1 text-sm"
+        >
+          <button
+            type="button"
+            onClick={act(onEdit)}
+            className="w-full text-left px-3 py-2 text-ink hover:bg-elevated transition-colors"
+          >
+            ✏️ แก้ไขข้อมูล
+          </button>
+          <button
+            type="button"
+            onClick={act(onComplete)}
+            className="w-full text-left px-3 py-2 text-ink hover:bg-elevated transition-colors"
+          >
+            ✅ ทำเครื่องหมายว่าสำเร็จ
+          </button>
+          <button
+            type="button"
+            onClick={act(onCancel)}
+            className="w-full text-left px-3 py-2 text-danger hover:bg-danger/10 transition-colors"
+          >
+            ❌ ยกเลิกโปรเจกต์
+          </button>
+        </div>
       )}
-      <p className="text-xs font-mono text-ink-soft mt-2">
-        มูลค่า {formatBahtCompact(project.boqBudget)}
-      </p>
-      <p className="text-[11px] text-accent mt-2">ดูรายละเอียด →</p>
-    </button>
+
+      <div className="pr-7">
+        <p className="text-sm font-medium text-ink">{project.name}</p>
+        <p className="text-xs text-ink-muted mt-0.5">
+          👤 {project.customerName || project.client}
+        </p>
+        {project.location && (
+          <p className="text-xs text-ink-muted mt-0.5">📍 {project.location}</p>
+        )}
+        <p className="text-xs font-mono text-ink-soft mt-2">
+          มูลค่า {formatBahtCompact(project.boqBudget)}
+        </p>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[11px] text-accent">ดูรายละเอียด →</span>
+          <span className="text-[10px] font-mono text-ink-muted">{project.id}</span>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -133,19 +191,61 @@ function ProfitRow({ project }) {
 
 function MultiProjectDashboard() {
   const navigate = useNavigate()
-  const { projects } = useProjects()
+  const { projects, updateProject } = useProjects()
   const handleOpen = (pid) => navigate(`/project/${pid}`)
 
-  const summary = useMemo(() => {
-    const totalValue = projects.reduce((s, p) => s + p.boqBudget, 0)
-    // profit only meaningful once there's actual cost (building/delivered)
-    const withActual = projects.filter((p) => p.actualCost > 0)
-    const profit = withActual.reduce((s, p) => s + (p.boqBudget - p.actualCost), 0)
-    return { count: projects.length, totalValue, profit }
-  }, [projects])
+  // เมนู kebab เปิดได้ทีละใบ (จัดการที่ parent) + ปิดเมื่อคลิกที่อื่น
+  const [openMenuId, setOpenMenuId] = useState(null)
+  useEffect(() => {
+    if (!openMenuId) return
+    const close = () => setOpenMenuId(null)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [openMenuId])
 
-  // projects that have started incurring cost — used by both finance sections
-  const activeProjects = projects.filter((p) => p.status !== 'estimating')
+  // modal แก้ไข + dialog ยืนยันยกเลิก
+  const [editing, setEditing] = useState(null)
+  const [confirmCancel, setConfirmCancel] = useState(null)
+
+  const handleComplete = (project) =>
+    updateProject(project.id, { status: 'completed' })
+  const handleCancelRequest = (project) => setConfirmCancel(project)
+  const handleConfirmCancel = () => {
+    if (confirmCancel) updateProject(confirmCancel.id, { status: 'cancelled' })
+    setConfirmCancel(null)
+  }
+  const handleEdit = (project) => setEditing(project)
+  const handleSaveEdit = (details) => {
+    if (editing) {
+      updateProject(editing.id, { ...details, client: details.customerName })
+    }
+    setEditing(null)
+  }
+
+  // แยกโปรเจกต์ที่ยกเลิกออกจากบอร์ดหลัก
+  const boardProjects = projects.filter((p) => p.status !== 'cancelled')
+  const cancelledProjects = projects.filter((p) => p.status === 'cancelled')
+
+  const summary = useMemo(() => {
+    const totalValue = boardProjects.reduce((s, p) => s + p.boqBudget, 0)
+    // profit only meaningful once there's actual cost (building/delivered)
+    const withActual = boardProjects.filter((p) => p.actualCost > 0)
+    const profit = withActual.reduce((s, p) => s + (p.boqBudget - p.actualCost), 0)
+    return { count: boardProjects.length, totalValue, profit }
+  }, [boardProjects])
+
+  // projects with cost — finance sections (ไม่รวม estimating และ cancelled)
+  const activeProjects = boardProjects.filter((p) => p.status !== 'estimating')
+
+  const cardProps = (p) => ({
+    project: p,
+    onOpen: handleOpen,
+    menuOpen: openMenuId === p.id,
+    onToggleMenu: () => setOpenMenuId((cur) => (cur === p.id ? null : p.id)),
+    onEdit: handleEdit,
+    onComplete: handleComplete,
+    onCancel: handleCancelRequest,
+  })
 
   return (
     <>
@@ -177,7 +277,12 @@ function MultiProjectDashboard() {
         {/* Kanban by status */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {STATUSES.map((s) => {
-            const colProjects = projects.filter((p) => p.status === s.key)
+            // คอลัมน์ "ส่งมอบแล้ว" รวมสถานะ delivered + completed
+            const colProjects = boardProjects.filter(
+              (p) =>
+                p.status === s.key ||
+                (s.key === 'delivered' && p.status === 'completed'),
+            )
             return (
               <Card key={s.key} className="p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -194,9 +299,7 @@ function MultiProjectDashboard() {
                   {colProjects.length === 0 ? (
                     <p className="text-xs text-ink-muted py-4 text-center">— ไม่มีโปรเจกต์ —</p>
                   ) : (
-                    colProjects.map((p) => (
-                      <ProjectCard key={p.id} project={p} onOpen={handleOpen} />
-                    ))
+                    colProjects.map((p) => <ProjectCard key={p.id} {...cardProps(p)} />)
                   )}
                 </div>
               </Card>
@@ -231,10 +334,47 @@ function MultiProjectDashboard() {
           </Card>
         </div>
 
+        {/* Cancelled projects */}
+        {cancelledProjects.length > 0 && (
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold text-ink flex items-center gap-2 mb-3">
+              ❌ โปรเจกต์ที่ยกเลิก
+              <span className="text-xs text-ink-muted">
+                ({cancelledProjects.length})
+              </span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 opacity-80">
+              {cancelledProjects.map((p) => (
+                <ProjectCard key={p.id} {...cardProps(p)} />
+              ))}
+            </div>
+          </Card>
+        )}
+
         <p className="text-xs text-ink-muted text-center">
           * ข้อมูลตัวอย่าง (mock) — จะเชื่อมกับ ERP backend (Flask/PostgreSQL) ในเฟสถัดไป
         </p>
       </main>
+
+      {/* Edit customer info */}
+      {editing && (
+        <SaveProjectModal
+          initial={editing}
+          onConfirm={handleSaveEdit}
+          onClose={() => setEditing(null)}
+        />
+      )}
+
+      {/* Confirm cancel */}
+      {confirmCancel && (
+        <ConfirmDialog
+          title="ยกเลิกโปรเจกต์?"
+          message={`ยืนยันยกเลิกโปรเจกต์ "${confirmCancel.name}"?\nโปรเจกต์จะถูกย้ายไปหมวด "ยกเลิก" (ยกเลิกได้ภายหลังโดยแก้สถานะ)`}
+          confirmLabel="❌ ยกเลิกโปรเจกต์"
+          onConfirm={handleConfirmCancel}
+          onCancel={() => setConfirmCancel(null)}
+        />
+      )}
     </>
   )
 }

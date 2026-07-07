@@ -17,12 +17,13 @@ function Field({ label, required, hint, children }) {
 }
 
 // ป๊อปอัปเก็บข้อมูลลูกค้าก่อนบันทึกโปรเจกต์เข้ากระดาน (สำหรับ Mini ERP)
-function SaveProjectModal({ defaultLocation = '', onConfirm, onClose }) {
+function SaveProjectModal({ initial, defaultLocation = '', onConfirm, onClose }) {
+  const isEdit = !!initial
   const [form, setForm] = useState({
-    customerName: '',
-    contact: '',
-    location: defaultLocation,
-    startDate: '',
+    customerName: initial?.customerName || initial?.client || '',
+    contact: initial?.contact || '',
+    location: initial?.location || defaultLocation,
+    startDate: initial?.startDate || '',
   })
 
   useEffect(() => {
@@ -64,7 +65,7 @@ function SaveProjectModal({ defaultLocation = '', onConfirm, onClose }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-ink">
-              💾 บันทึกโปรเจกต์เข้ากระดาน
+              {isEdit ? '✏️ แก้ไขข้อมูลลูกค้า' : '💾 บันทึกโปรเจกต์เข้ากระดาน'}
             </h3>
             <p className="text-xs text-ink-muted mt-0.5">
               กรอกข้อมูลลูกค้าเพื่อจัดการในระบบ ERP
@@ -127,7 +128,7 @@ function SaveProjectModal({ defaultLocation = '', onConfirm, onClose }) {
             ยกเลิก
           </Button>
           <Button type="submit" disabled={!valid}>
-            ยืนยันบันทึก
+            {isEdit ? 'บันทึกการแก้ไข' : 'ยืนยันบันทึก'}
           </Button>
         </div>
       </form>

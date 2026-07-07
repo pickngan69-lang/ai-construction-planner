@@ -7,9 +7,12 @@ export const PROJECT_STATUSES = [
   { key: 'building', label: 'ระหว่างก่อสร้าง', icon: '🔨', color: '#457b9d' },
   { key: 'delivered', label: 'ส่งมอบแล้ว', icon: '✅', color: '#2a9d8f' },
 ]
-export const STATUS_META = Object.fromEntries(
-  PROJECT_STATUSES.map((s) => [s.key, s]),
-)
+export const STATUS_META = {
+  ...Object.fromEntries(PROJECT_STATUSES.map((s) => [s.key, s])),
+  // สถานะจาก action menu (นอกเหนือจากคอลัมน์ kanban หลัก)
+  completed: { key: 'completed', label: 'สำเร็จ', icon: '✅', color: '#2a9d8f' },
+  cancelled: { key: 'cancelled', label: 'ยกเลิก', icon: '❌', color: '#e76f51' },
+}
 
 // installments[].status: 'paid' (ชำระแล้ว) | 'due' (ครบกำหนด/รอชำระ) | 'upcoming' (ยังไม่ถึง)
 export const MOCK_PROJECTS = [

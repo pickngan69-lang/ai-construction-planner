@@ -9,22 +9,25 @@ import {
 import { MOCK_PROJECTS } from '../data/mockProjects'
 
 const STORAGE_KEY = 'acp-projects'
+const OVERRIDES_KEY = 'acp-project-overrides'
 const ProjectContext = createContext(null)
 
-function loadAdded() {
-  if (typeof window === 'undefined') return []
+function loadJson(key, fallback) {
+  if (typeof window === 'undefined') return fallback
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const raw = window.localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
   } catch {
-    return []
+    return fallback
   }
 }
 
-// จัดการสถานะโปรเจกต์แบบ global — โปรเจกต์ที่ผู้ใช้สร้างจากผลวิเคราะห์ AI จะถูก
-// เก็บลง localStorage (ชั่วคราวก่อนต่อ ERP backend) แล้ว merge กับข้อมูลตัวอย่าง (seed)
+// จัดการสถานะโปรเจกต์แบบ global. โปรเจกต์ที่ผู้ใช้สร้างจากผลวิเคราะห์ AI เก็บใน
+// `added`; การแก้ไข/เปลี่ยนสถานะ (รวมถึงของ seed) เก็บเป็น `overrides` ราย id แล้ว
+// merge ทับ — ทำให้แก้ทั้ง seed และโปรเจกต์ใหม่ได้เหมือนกันโดยไม่แตะข้อมูลตัวอย่าง.
 export function ProjectProvider({ children }) {
-  const [added, setAdded] = useState(loadAdded)
+  const [added, setAdded] = useState(() => loadJson(STORAGE_KEY, []))
+  const [overrides, setOverrides] = useState(() => loadJson(OVERRIDES_KEY, {}))
 
   useEffect(() => {
     try {
@@ -34,11 +37,30 @@ export function ProjectProvider({ children }) {
     }
   }, [added])
 
-  // โปรเจกต์ที่สร้างใหม่อยู่บนสุด (ใหม่→เก่า) ตามด้วยข้อมูลตัวอย่าง
-  const projects = useMemo(() => [...added, ...MOCK_PROJECTS], [added])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides))
+    } catch {
+      // ignore quota / unavailable storage
+    }
+  }, [overrides])
+
+  const projects = useMemo(
+    () =>
+      [...added, ...MOCK_PROJECTS].map((p) => ({
+        ...p,
+        ...(overrides[p.id] || {}),
+      })),
+    [added, overrides],
+  )
 
   const addProject = useCallback((project) => {
     setAdded((prev) => [project, ...prev])
+  }, [])
+
+  // แก้ไข/เปลี่ยนสถานะโปรเจกต์ (ใช้ได้ทั้ง seed และที่สร้างใหม่)
+  const updateProject = useCallback((id, patch) => {
+    setOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))
   }, [])
 
   const getProject = useCallback(
@@ -47,8 +69,8 @@ export function ProjectProvider({ children }) {
   )
 
   const value = useMemo(
-    () => ({ projects, addProject, getProject }),
-    [projects, addProject, getProject],
+    () => ({ projects, addProject, updateProject, getProject }),
+    [projects, addProject, updateProject, getProject],
   )
 
   return (
