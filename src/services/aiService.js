@@ -119,6 +119,11 @@ export async function analyzeHouse(files, projectInfo) {
         type: 'text',
         text: `ข้อมูลจากไฟล์ตาราง "${f.name || 'ตาราง'}" (เช่น BOQ / รายการวัสดุ):\n${f.textContent || '(ไม่มีข้อมูล)'}`,
       })
+    } else if (f.kind === 'doc') {
+      content.push({
+        type: 'text',
+        text: `ข้อความจากไฟล์เอกสาร Word "${f.name || 'เอกสาร'}":\n${f.textContent || '(ไม่มีข้อมูล)'}`,
+      })
     } else {
       // image — catalog reference carries a remote URL (Anthropic fetches it
       // server-side); uploaded images carry base64 data.

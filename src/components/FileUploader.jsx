@@ -5,13 +5,29 @@ import {
   detectFileKind,
   readFileAsBase64,
   parseSpreadsheet,
+  parseDocx,
+  countPdfPages,
 } from '../utils/fileParsing'
 
-const ACCEPT =
-  'image/png,image/jpeg,image/webp,application/pdf,.pdf,.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv'
+const ACCEPT = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'application/pdf',
+  '.pdf',
+  '.docx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx',
+  '.xls',
+  '.csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+].join(',')
 
 const KIND_META = {
   pdf: { icon: '📄', label: 'PDF' },
+  doc: { icon: '📝', label: 'Word' },
   sheet: { icon: '📊', label: 'ตาราง' },
 }
 
@@ -22,11 +38,35 @@ function formatSize(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-// Multi-file uploader — accepts images (JPG/PNG/WEBP), PDF, Excel, and CSV.
-// Each file is preprocessed into the shape aiService needs:
+// Short "content preview" badge — confirms the file was read successfully.
+function metaBadge(f) {
+  if (f.kind === 'pdf') {
+    return f.meta?.pages > 0 ? `${f.meta.pages} หน้า` : '✓ อ่านสำเร็จ'
+  }
+  if (f.kind === 'sheet') {
+    return `${f.meta?.sheets?.length || 0} ชีต · ${f.meta?.totalRows || 0} แถว`
+  }
+  if (f.kind === 'doc') {
+    return f.meta?.chars
+      ? `~${f.meta.chars.toLocaleString()} ตัวอักษร`
+      : '✓ อ่านสำเร็จ'
+  }
+  return ''
+}
+
+// Bottom detail line: sheet names / text snippet / file size.
+function metaDetail(f) {
+  if (f.kind === 'sheet') return (f.meta?.sheets || []).map((s) => s.name).join(', ')
+  if (f.kind === 'doc') return f.meta?.preview || ''
+  return formatSize(f.size)
+}
+
+// Multi-file uploader — accepts images (JPG/PNG/WEBP), PDF, Word (DOCX),
+// Excel, and CSV. Each file is preprocessed into the shape aiService needs:
 //   image → { kind:'image', base64, mediaType, preview, tag }
-//   pdf   → { kind:'pdf',   base64, mediaType:'application/pdf' }
-//   sheet → { kind:'sheet', textContent }  (parsed via xlsx)
+//   pdf   → { kind:'pdf',   base64, mediaType:'application/pdf', meta:{pages} }
+//   doc   → { kind:'doc',   textContent, meta:{chars,preview} }  (via mammoth)
+//   sheet → { kind:'sheet', textContent, meta:{sheets,totalRows} }  (via xlsx)
 function FileUploader({ files, setFiles, maxFiles = 7 }) {
   const inputRef = useRef(null)
   const [dragOver, setDragOver] = useState(false)
@@ -70,11 +110,16 @@ function FileUploader({ files, setFiles, maxFiles = 7 }) {
               ...base,
               mediaType: 'application/pdf',
               base64: await readFileAsBase64(file),
+              meta: { pages: await countPdfPages(file) },
             })
+          } else if (kind === 'doc') {
+            const { text, meta } = await parseDocx(file)
+            processed.push({ ...base, textContent: text, meta })
           } else if (kind === 'sheet') {
-            processed.push({ ...base, textContent: await parseSpreadsheet(file) })
+            const { text, meta } = await parseSpreadsheet(file)
+            processed.push({ ...base, textContent: text, meta })
           } else {
-            setError('รองรับเฉพาะไฟล์ รูปภาพ, PDF, Excel และ CSV')
+            setError('รองรับเฉพาะไฟล์ รูปภาพ, PDF, Word, Excel และ CSV')
           }
         } catch {
           setError(`อ่านไฟล์ "${file.name}" ไม่สำเร็จ`)
@@ -140,8 +185,8 @@ function FileUploader({ files, setFiles, maxFiles = 7 }) {
             : 'ครบจำนวนสูงสุดแล้ว'}
         </p>
         <p className="text-xs text-ink-muted mt-1">
-          รองรับ 🖼️ รูปภาพ (PNG/JPG/WEBP) · 📄 PDF · 📊 Excel/CSV — สูงสุด{' '}
-          {maxFiles} ไฟล์ (เหลือ {remaining})
+          รองรับ 🖼️ รูปภาพ · 📄 PDF · 📝 Word · 📊 Excel/CSV — สูงสุด {maxFiles}{' '}
+          ไฟล์ (เหลือ {remaining})
         </p>
         <input
           ref={inputRef}
@@ -200,12 +245,15 @@ function FileUploader({ files, setFiles, maxFiles = 7 }) {
                   key={f.id}
                   className="rounded-lg border border-line bg-surface overflow-hidden flex flex-col"
                 >
-                  <div className="relative aspect-square bg-canvas flex flex-col items-center justify-center gap-2 p-2">
+                  <div className="relative aspect-square bg-canvas flex flex-col items-center justify-center gap-1.5 p-3 text-center">
                     <span className="text-4xl">
                       {KIND_META[f.kind]?.icon || '📎'}
                     </span>
                     <span className="text-[11px] font-medium text-ink-soft">
                       {KIND_META[f.kind]?.label || 'ไฟล์'}
+                    </span>
+                    <span className="text-[10px] text-accent bg-accent/10 rounded-full px-2 py-0.5">
+                      {metaBadge(f)}
                     </span>
                     <button
                       type="button"
@@ -220,8 +268,11 @@ function FileUploader({ files, setFiles, maxFiles = 7 }) {
                     <p className="text-xs text-ink truncate" title={f.name}>
                       {f.name}
                     </p>
-                    <p className="text-[10px] text-ink-muted">
-                      {formatSize(f.size)}
+                    <p
+                      className="text-[10px] text-ink-muted truncate"
+                      title={metaDetail(f)}
+                    >
+                      {metaDetail(f) || formatSize(f.size)}
                     </p>
                   </div>
                 </div>
