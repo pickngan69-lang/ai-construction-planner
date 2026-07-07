@@ -45,7 +45,12 @@ function ProjectCard({ project, onOpen }) {
           {project.id}
         </span>
       </div>
-      <p className="text-xs text-ink-muted mt-0.5">👤 {project.client}</p>
+      <p className="text-xs text-ink-muted mt-0.5">
+        👤 {project.customerName || project.client}
+      </p>
+      {project.location && (
+        <p className="text-xs text-ink-muted mt-0.5">📍 {project.location}</p>
+      )}
       <p className="text-xs font-mono text-ink-soft mt-2">
         มูลค่า {formatBahtCompact(project.boqBudget)}
       </p>

@@ -121,7 +121,7 @@ function ProjectDetail() {
               </span>
             </div>
             <p className="text-sm text-ink-muted mt-1">
-              👤 {project.client} · {project.id}
+              👤 {project.customerName || project.client} · {project.id}
             </p>
           </div>
           <button
@@ -144,6 +144,18 @@ function ProjectDetail() {
             <span>🎨 {project.style}</span>
           </div>
         </Card>
+
+        {/* ข้อมูลลูกค้า (เก็บจาก SaveProjectModal ตอนบันทึกโปรเจกต์) */}
+        {(project.contact || project.location || project.startDate) && (
+          <Card className="p-5">
+            <p className="text-xs text-ink-muted mb-2">ข้อมูลลูกค้า</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-soft">
+              {project.contact && <span>📞 {project.contact}</span>}
+              {project.location && <span>📍 {project.location}</span>}
+              {project.startDate && <span>📅 เริ่มงาน {project.startDate}</span>}
+            </div>
+          </Card>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

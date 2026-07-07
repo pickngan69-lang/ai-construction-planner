@@ -6,6 +6,7 @@ import Card from './ui/Card'
 import ConfirmDialog from './ui/ConfirmDialog'
 import ModeToggle from './ModeToggle'
 import TaskModal from './TaskModal'
+import SaveProjectModal from './SaveProjectModal'
 import DashboardTab from './tabs/DashboardTab'
 import InteractiveGantt from './InteractiveGantt'
 import BOQTab from './tabs/BOQTab'
@@ -398,15 +399,22 @@ function ResultDashboard({
     (adjustedResult.total_material_cost_adjusted || 0) +
     (adjustedResult.total_labor_cost || 0)
 
-  // บันทึกผลวิเคราะห์เป็นโปรเจกต์ใหม่ (สถานะ 'กำลังประเมินราคา') เข้ากระดาน แล้วกลับ Dashboard
-  const handleSaveProject = () => {
+  // เปิด modal เก็บข้อมูลลูกค้าก่อน แล้วค่อยบันทึกเมื่อผู้ใช้กด "ยืนยัน"
+  const [showSaveModal, setShowSaveModal] = useState(false)
+
+  // มัดรวมข้อมูลลูกค้า (จาก modal) + ข้อมูล AI (ชื่อ/งบ/รูป/BOQ) → บันทึกเข้ากระดาน
+  const handleConfirmSave = (customer) => {
     const houseInfo = adjustedResult.house_analysis || {}
     const budget = Number(projectInfo.budget) || Math.round(totalCost)
     const cover = images?.find((f) => f.kind === 'image' && (f.url || f.preview))
     addProject({
       id: `PJ-${Date.now().toString(36)}`,
       name: projectInfo.name?.trim() || houseInfo.type || 'โปรเจกต์ใหม่',
-      client: '',
+      customerName: customer.customerName,
+      client: customer.customerName, // backward-compat กับโค้ดเดิมที่อ่าน .client
+      contact: customer.contact,
+      location: customer.location,
+      startDate: customer.startDate,
       status: 'estimating',
       area: Number(projectInfo.area) || houseInfo.estimated_size_sqm || 0,
       floors: Number(projectInfo.floors) || houseInfo.floors || 1,
@@ -422,6 +430,7 @@ function ResultDashboard({
       imageUrl: cover?.url || cover?.preview || null,
       createdAt: Date.now(),
     })
+    setShowSaveModal(false)
     navigate('/projects')
   }
 
@@ -515,7 +524,7 @@ function ResultDashboard({
       <div className="flex justify-end" data-print-hide>
         <button
           type="button"
-          onClick={handleSaveProject}
+          onClick={() => setShowSaveModal(true)}
           className="px-4 py-2 rounded-md bg-accent text-canvas text-sm font-medium hover:bg-accent-soft transition-colors"
         >
           💾 บันทึกเข้ากระดานโปรเจกต์
@@ -613,6 +622,14 @@ function ResultDashboard({
         {/* ผูกหน้าสัญญาเข้ากับระบบ */}
         {tab === 'contract' && <ContractTab result={adjustedResult} projectInfo={projectInfo} />}
       </div>
+
+      {showSaveModal && (
+        <SaveProjectModal
+          defaultLocation={projectInfo.province || ''}
+          onConfirm={handleConfirmSave}
+          onClose={() => setShowSaveModal(false)}
+        />
+      )}
 
       {/* Task CRUD modals */}
       {taskModal && (
