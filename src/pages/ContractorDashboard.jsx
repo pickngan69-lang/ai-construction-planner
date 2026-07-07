@@ -9,6 +9,7 @@ import ResultDashboard from '../components/ResultDashboard'
 import GuidePopup from '../components/GuidePopup'
 import { MATERIAL_GRADES, STEPS } from '../utils/constants'
 import { useAnalysisContext } from '../contexts/AnalysisContext'
+import { useProjects } from '../contexts/ProjectContext'
 import { useAuth } from '../contexts/AuthContext'
 
 const DEFAULT_PROJECT_INFO = {
@@ -59,7 +60,8 @@ function ContractorDashboard() {
   const [catalogTitle, setCatalogTitle] = useState(
     () => catalogPlan?.title || null,
   )
-  const { step, result, error, run, reset } = useAnalysisContext()
+  const { step, result, error, run, reset, loadSnapshot } = useAnalysisContext()
+  const { projects } = useProjects()
   const { logout } = useAuth()
 
   // เมื่อมาจากแคตตาล็อก: ล้างผลลัพธ์เก่า + บังคับ step กลับเป็น INPUT
@@ -92,6 +94,34 @@ function ContractorDashboard() {
   const handleGradeChange = (grade) =>
     setProjectInfo((prev) => ({ ...prev, grade }))
 
+  // โปรเจกต์ที่บันทึกผลวิเคราะห์ไว้ (เปิดกลับมาดูได้)
+  const savedProjects = projects.filter((p) => p.analysis?.snapshot?.result)
+
+  const handleSelectProject = (e) => {
+    const id = e.target.value
+    if (!id) return
+    const p = projects.find((x) => x.id === id)
+    if (!p?.analysis?.snapshot) return
+    setProjectInfo(p.analysis.projectInfo || DEFAULT_PROJECT_INFO)
+    setFiles(
+      p.imageUrl
+        ? [
+            {
+              id: `saved-${p.id}`,
+              kind: 'image',
+              name: p.name,
+              preview: p.imageUrl,
+              url: p.imageUrl,
+              sourceType: 'url',
+              tag: 'ภาพบันดาลใจ',
+            },
+          ]
+        : [],
+    )
+    setCatalogTitle(null)
+    loadSnapshot(p.analysis.snapshot) // ตั้ง step = RESULT ให้แสดงผลวิเคราะห์
+  }
+
   // Back behavior — depends on step:
   // RESULT/ANALYZING → reset back to input
   // INPUT → logout (กลับไป LoginPage)
@@ -113,6 +143,26 @@ function ContractorDashboard() {
       </Header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {savedProjects.length > 0 && step !== STEPS.ANALYZING && (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface/60 px-4 py-2.5">
+            <span className="text-sm text-ink-soft">
+              📂 เปิดโปรเจกต์ที่บันทึกไว้:
+            </span>
+            <select
+              value=""
+              onChange={handleSelectProject}
+              className="rounded-md border border-line bg-canvas px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-accent transition-colors"
+            >
+              <option value="">— เลือกโปรเจกต์ —</option>
+              {savedProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.customerName || p.client}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {step === STEPS.INPUT && (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-2">
