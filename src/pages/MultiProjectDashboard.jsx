@@ -40,8 +40,11 @@ function ProjectCard({
   onEdit,
   onComplete,
   onCancel,
+  onRestore,
 }) {
   const meta = STATUS_META[project.status] || STATUS_META.estimating
+  const isEndState =
+    project.status === 'cancelled' || project.status === 'completed'
 
   // ปิดเมนู + หยุด bubble ไม่ให้ไปเปิดหน้ารายละเอียด แล้วเรียก action
   const act = (fn) => (e) => {
@@ -80,20 +83,32 @@ function ProjectCard({
           >
             ✏️ แก้ไขข้อมูล
           </button>
-          <button
-            type="button"
-            onClick={act(onComplete)}
-            className="w-full text-left px-3 py-2 text-ink hover:bg-elevated transition-colors"
-          >
-            ✅ ทำเครื่องหมายว่าสำเร็จ
-          </button>
-          <button
-            type="button"
-            onClick={act(onCancel)}
-            className="w-full text-left px-3 py-2 text-danger hover:bg-danger/10 transition-colors"
-          >
-            ❌ ยกเลิกโปรเจกต์
-          </button>
+          {isEndState ? (
+            <button
+              type="button"
+              onClick={act(onRestore)}
+              className="w-full text-left px-3 py-2 text-ink hover:bg-elevated transition-colors"
+            >
+              ♻️ กู้คืนโปรเจกต์
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={act(onComplete)}
+                className="w-full text-left px-3 py-2 text-ink hover:bg-elevated transition-colors"
+              >
+                ✅ ทำเครื่องหมายว่าสำเร็จ
+              </button>
+              <button
+                type="button"
+                onClick={act(onCancel)}
+                className="w-full text-left px-3 py-2 text-danger hover:bg-danger/10 transition-colors"
+              >
+                ❌ ยกเลิกโปรเจกต์
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -208,12 +223,20 @@ function MultiProjectDashboard() {
   const [confirmCancel, setConfirmCancel] = useState(null)
 
   const handleComplete = (project) =>
-    updateProject(project.id, { status: 'completed' })
+    updateProject(project.id, { status: 'completed', prevStatus: project.status })
   const handleCancelRequest = (project) => setConfirmCancel(project)
   const handleConfirmCancel = () => {
-    if (confirmCancel) updateProject(confirmCancel.id, { status: 'cancelled' })
+    if (confirmCancel) {
+      updateProject(confirmCancel.id, {
+        status: 'cancelled',
+        prevStatus: confirmCancel.status,
+      })
+    }
     setConfirmCancel(null)
   }
+  // กู้คืน: กลับไปสถานะก่อนหน้า (หรือ 'กำลังประเมินราคา' ถ้าไม่ทราบ)
+  const handleRestore = (project) =>
+    updateProject(project.id, { status: project.prevStatus || 'estimating' })
   const handleEdit = (project) => setEditing(project)
   const handleSaveEdit = (details) => {
     if (editing) {
@@ -245,6 +268,7 @@ function MultiProjectDashboard() {
     onEdit: handleEdit,
     onComplete: handleComplete,
     onCancel: handleCancelRequest,
+    onRestore: handleRestore,
   })
 
   return (
