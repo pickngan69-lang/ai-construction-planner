@@ -3,24 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Card from '../components/ui/Card'
 import { formatBaht, formatBahtCompact } from '../utils/formatters'
-
-// Status columns for the project kanban.
-const STATUSES = [
-  { key: 'estimating', label: 'กำลังประเมินราคา', icon: '📝', color: '#e07a2f' },
-  { key: 'building', label: 'ระหว่างก่อสร้าง', icon: '🔨', color: '#457b9d' },
-  { key: 'delivered', label: 'ส่งมอบแล้ว', icon: '✅', color: '#2a9d8f' },
-]
-const STATUS_META = Object.fromEntries(STATUSES.map((s) => [s.key, s]))
-
-// Mock client projects — the ERP backend (erp-backend/) will supply these later.
-const MOCK_PROJECTS = [
-  { id: 'P-001', name: 'บ้านคุณสมชาย', client: 'สมชาย ใจดี', status: 'estimating', boqBudget: 2500000, actualCost: 0, installmentPaid: 0, installmentTotal: 2500000 },
-  { id: 'P-002', name: 'บ้านคุณวิภา', client: 'วิภา รักบ้าน', status: 'building', boqBudget: 3800000, actualCost: 2100000, installmentPaid: 1900000, installmentTotal: 3800000 },
-  { id: 'P-003', name: 'ทาวน์โฮมคุณเอก', client: 'เอกชัย พงษ์ไพศาล', status: 'building', boqBudget: 1800000, actualCost: 1250000, installmentPaid: 1080000, installmentTotal: 1800000 },
-  { id: 'P-004', name: 'วิลล่าคุณนภา', client: 'นภา ทองดี', status: 'delivered', boqBudget: 5500000, actualCost: 5150000, installmentPaid: 5500000, installmentTotal: 5500000 },
-  { id: 'P-005', name: 'บ้านคุณธนา', client: 'ธนา มั่งมี', status: 'delivered', boqBudget: 3200000, actualCost: 3350000, installmentPaid: 3200000, installmentTotal: 3200000 },
-  { id: 'P-006', name: 'บ้านคุณมาลี', client: 'มาลี ศรีสุข', status: 'estimating', boqBudget: 2900000, actualCost: 0, installmentPaid: 0, installmentTotal: 2900000 },
-]
+import {
+  MOCK_PROJECTS,
+  PROJECT_STATUSES as STATUSES,
+  STATUS_META,
+} from '../data/mockProjects'
 
 function StatCard({ icon, label, value, accent }) {
   return (
@@ -43,11 +30,13 @@ function StatCard({ icon, label, value, accent }) {
   )
 }
 
-function ProjectCard({ project }) {
+function ProjectCard({ project, onOpen }) {
   const meta = STATUS_META[project.status]
   return (
-    <div
-      className="rounded-lg border border-line bg-elevated/30 p-4"
+    <button
+      type="button"
+      onClick={() => onOpen(project.id)}
+      className="w-full text-left rounded-lg border border-line bg-elevated/30 p-4 hover:border-accent hover:bg-elevated/50 transition-colors"
       style={{ borderLeft: `3px solid ${meta.color}` }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -60,7 +49,8 @@ function ProjectCard({ project }) {
       <p className="text-xs font-mono text-ink-soft mt-2">
         มูลค่า {formatBahtCompact(project.boqBudget)}
       </p>
-    </div>
+      <p className="text-[11px] text-accent mt-2">ดูรายละเอียด →</p>
+    </button>
   )
 }
 
@@ -138,6 +128,7 @@ function ProfitRow({ project }) {
 
 function MultiProjectDashboard() {
   const navigate = useNavigate()
+  const handleOpen = (pid) => navigate(`/project/${pid}`)
 
   const summary = useMemo(() => {
     const totalValue = MOCK_PROJECTS.reduce((s, p) => s + p.boqBudget, 0)
@@ -188,7 +179,9 @@ function MultiProjectDashboard() {
                   {projects.length === 0 ? (
                     <p className="text-xs text-ink-muted py-4 text-center">— ไม่มีโปรเจกต์ —</p>
                   ) : (
-                    projects.map((p) => <ProjectCard key={p.id} project={p} />)
+                    projects.map((p) => (
+                      <ProjectCard key={p.id} project={p} onOpen={handleOpen} />
+                    ))
                   )}
                 </div>
               </Card>

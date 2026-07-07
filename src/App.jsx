@@ -6,22 +6,13 @@ import LoginPage from './pages/LoginPage'
 import ContractorDashboard from './pages/ContractorDashboard'
 import HouseCatalog from './pages/HouseCatalog'
 import MultiProjectDashboard from './pages/MultiProjectDashboard'
+import ProjectDetail from './pages/ProjectDetail'
+import CustomerSummary from './pages/CustomerSummary'
 
-// Contractor-only app. Once logged in, the pages are navigable via react-router.
-function AppRouter() {
+// หน้าฝั่งผู้รับเหมาต้อง login ก่อน — ถ้ายังไม่ login แสดงหน้า LoginPage
+function RequireAuth({ children }) {
   const { user } = useAuth()
-  if (!user) return <LoginPage />
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<ContractorDashboard />} />
-        <Route path="/catalog" element={<HouseCatalog />} />
-        <Route path="/projects" element={<MultiProjectDashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return user ? children : <LoginPage />
 }
 
 function App() {
@@ -29,7 +20,47 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <AnalysisProvider>
-          <AppRouter />
+          <BrowserRouter>
+            <Routes>
+              {/* หน้าลูกค้า (Magic Link) — public เข้าได้โดยไม่ต้อง login */}
+              <Route path="/shared/:id" element={<CustomerSummary />} />
+
+              {/* หน้าฝั่งผู้รับเหมา — ต้อง login */}
+              <Route
+                path="/"
+                element={
+                  <RequireAuth>
+                    <ContractorDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/catalog"
+                element={
+                  <RequireAuth>
+                    <HouseCatalog />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <RequireAuth>
+                    <MultiProjectDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/project/:id"
+                element={
+                  <RequireAuth>
+                    <ProjectDetail />
+                  </RequireAuth>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
         </AnalysisProvider>
       </AuthProvider>
     </ThemeProvider>
