@@ -60,7 +60,8 @@ function SummaryHeader({ result, images, totalCost }) {
   const lo = Math.round((totalCost * 0.92) / 1000) * 1000
   const hi = Math.round((totalCost * 1.12) / 1000) * 1000
   const houseInfo = result.house_analysis || {}
-  const cover = images?.[0]
+  // cover = รูปแรก (ข้ามไฟล์ PDF/ตารางที่ไม่มี preview)
+  const cover = images?.find((f) => f.kind === 'image' && f.preview) || null
 
   return (
     <Card className="overflow-hidden">

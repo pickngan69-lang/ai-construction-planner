@@ -153,7 +153,7 @@ function ProjectForm({
         </Button>
         {!canAnalyze && (
           <p className="text-xs text-ink-muted mt-2">
-            ต้องอัปโหลดรูปอย่างน้อย 1 รูปก่อน
+            ต้องแนบไฟล์อย่างน้อย 1 ไฟล์ก่อน (รูป / PDF / Excel / CSV)
           </p>
         )}
       </div>

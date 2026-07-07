@@ -90,23 +90,49 @@ function buildProjectInfoText(p) {
   return lines.join('\n')
 }
 
-export async function analyzeHouse(images, projectInfo) {
-  if (!images?.length) throw new Error('ต้องมีรูปอย่างน้อย 1 รูป')
+export async function analyzeHouse(files, projectInfo) {
+  if (!files?.length) throw new Error('ต้องแนบไฟล์อย่างน้อย 1 ไฟล์')
 
   const content = []
 
-  images.forEach((img, i) => {
-    // Catalog reference images carry a remote URL (Anthropic fetches it
-    // server-side); uploaded images carry base64 data.
-    const source =
-      img.sourceType === 'url' && img.url
-        ? { type: 'url', url: img.url }
-        : { type: 'base64', media_type: img.mediaType, data: img.base64 }
-    content.push({ type: 'image', source })
-    content.push({
-      type: 'text',
-      text: `รูปที่ ${i + 1}: ${img.tag || 'ไม่ระบุ'}`,
-    })
+  // Attach every uploaded file in the shape Anthropic expects:
+  //   image → image block (base64 upload, or remote URL for catalog reference)
+  //   pdf   → document block (base64)
+  //   sheet → text block with the extracted table content (BOQ/materials)
+  let imageCount = 0
+  files.forEach((f) => {
+    if (f.kind === 'pdf') {
+      content.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: f.base64,
+        },
+      })
+      content.push({
+        type: 'text',
+        text: `ไฟล์เอกสาร PDF: ${f.name || 'ไม่ระบุชื่อ'} — โปรดใช้ประกอบการประเมิน (เช่น แปลนบ้าน)`,
+      })
+    } else if (f.kind === 'sheet') {
+      content.push({
+        type: 'text',
+        text: `ข้อมูลจากไฟล์ตาราง "${f.name || 'ตาราง'}" (เช่น BOQ / รายการวัสดุ):\n${f.textContent || '(ไม่มีข้อมูล)'}`,
+      })
+    } else {
+      // image — catalog reference carries a remote URL (Anthropic fetches it
+      // server-side); uploaded images carry base64 data.
+      imageCount += 1
+      const source =
+        f.sourceType === 'url' && f.url
+          ? { type: 'url', url: f.url }
+          : { type: 'base64', media_type: f.mediaType, data: f.base64 }
+      content.push({ type: 'image', source })
+      content.push({
+        type: 'text',
+        text: `รูปที่ ${imageCount}: ${f.tag || 'ไม่ระบุ'}`,
+      })
+    }
   })
 
   content.push({ type: 'text', text: buildProjectInfoText(projectInfo) })

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/Header'
-import ImageUploader from '../components/ImageUploader'
+import FileUploader from '../components/FileUploader'
 import ProjectForm from '../components/ProjectForm'
 import MockToggle from '../components/MockToggle'
 import AnalyzingScreen from '../components/AnalyzingScreen'
@@ -31,11 +31,13 @@ function ContractorDashboard() {
 
   // Auto-fill จากแคตตาล็อก: seed ตอน mount เลย (lazy initial state) — ตั้งชื่อ/งบ
   // และเพิ่มรูปแบบบ้านเป็น reference image (sourceType 'url') ให้กดวิเคราะห์ได้ทันที
-  const [images, setImages] = useState(() =>
+  const [files, setFiles] = useState(() =>
     catalogPlan?.imageUrl
       ? [
           {
             id: `catalog-${Date.now()}`,
+            kind: 'image',
+            name: catalogPlan.title || 'reference',
             preview: catalogPlan.imageUrl,
             url: catalogPlan.imageUrl,
             sourceType: 'url',
@@ -75,14 +77,14 @@ function ContractorDashboard() {
   const gradeMultiplier =
     MATERIAL_GRADES.find((g) => g.id === projectInfo.grade)?.multiplier || 1
 
-  const handleAnalyze = () => run(images, projectInfo, { mock: useMock })
-  // Test mode lets you exercise the UI without uploading any image
-  const canAnalyze = useMock || images.length > 0
+  const handleAnalyze = () => run(files, projectInfo, { mock: useMock })
+  // Test mode lets you exercise the UI without uploading any file
+  const canAnalyze = useMock || files.length > 0
 
   // ฟังก์ชันรีเซ็ตค่าเพื่อกลับไปหน้าเริ่มแรก
   const handleReset = () => {
     reset() // สั่ง Context ให้กลับไป Step.INPUT
-    setImages([]) // ล้างรูปเก่า
+    setFiles([]) // ล้างไฟล์เก่า
     setProjectInfo(DEFAULT_PROJECT_INFO) // ล้างข้อมูลฟอร์ม
     setCatalogTitle(null)
   }
@@ -99,14 +101,13 @@ function ContractorDashboard() {
   return (
     <>
       <Header onBack={handleBack}>
-        {/* ปุ่มนี้จะพาคุณปิ๊กกลับไปหน้าใส่รูปครับ */}
         {step === STEPS.RESULT && (
           <button
             type="button"
             onClick={handleReset}
             className="px-3 py-1.5 text-xs rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent transition-colors"
           >
-            + วิเคราะห์ใหม่ (อัปโหลดรูปเพิ่ม)
+            + วิเคราะห์ใหม่ (อัปโหลดไฟล์เพิ่ม)
           </button>
         )}
       </Header>
@@ -132,26 +133,31 @@ function ContractorDashboard() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-xl font-semibold text-ink">
-                  อัปโหลดแบบบ้าน
+                  อัปโหลดไฟล์แบบบ้าน &amp; เอกสาร
                 </h2>
-                <GuidePopup title="วิธีอัปโหลดแบบบ้าน">
+                <GuidePopup title="รองรับไฟล์อะไรบ้าง">
                   <p>
-                    อัปโหลดได้สูงสุด **7 รูป** รองรับ PNG, JPG, WEBP — แต่ละรูป
-                    เลือก tag (แปลนพื้น / รูปด้าน / 3D /
-                    ภาพบันดาลใจ) เพื่อให้ AI เข้าใจบริบท
+                    อัปโหลดได้หลายไฟล์ (สูงสุด 7): <strong>🖼️ รูปภาพ</strong>{' '}
+                    (PNG/JPG/WEBP), <strong>📄 PDF</strong> (แปลนบ้าน), และ{' '}
+                    <strong>📊 Excel/CSV</strong> (BOQ / รายการวัสดุ)
                   </p>
                   <p>
-                    💡 รูปแปลนพื้นจำเป็นที่สุด — ช่วยให้ AI ประเมินขนาด
-                    และห้องได้แม่นยำ
+                    รูปภาพเลือก tag ได้ (แปลนพื้น/รูปด้าน/3D/ภาพบันดาลใจ) · PDF
+                    ส่งให้ AI อ่านโดยตรง · ตาราง Excel/CSV จะถูกแปลงเป็นข้อมูล
+                    ประกอบให้ AI
+                  </p>
+                  <p>
+                    💡 แนบแปลนพื้น (รูปหรือ PDF) จะช่วยให้ประเมินขนาด/ห้อง
+                    ได้แม่นยำที่สุด
                   </p>
                 </GuidePopup>
               </div>
               <p className="text-sm text-ink-muted mb-4">
-                เริ่มต้นโดยอัปโหลดรูปแปลน รูปด้าน หรือภาพ 3D (ใส่ได้สูงสุด 7 รูป)
+                🆕 รองรับหลายไฟล์แล้ว — แปลนบ้าน (รูป/PDF) และไฟล์ BOQ/วัสดุ
+                (Excel, CSV)
               </p>
-              
-              {/* ส่ง Prop เข้าไปจัดการรูปภาพ */}
-              <ImageUploader images={images} setImages={setImages} maxFiles={7} />
+
+              <FileUploader files={files} setFiles={setFiles} maxFiles={7} />
             </div>
 
             <ProjectForm
@@ -175,7 +181,7 @@ function ContractorDashboard() {
         {step === STEPS.RESULT && result && (
           <ResultDashboard
             result={result}
-            images={images}
+            images={files}
             projectInfo={projectInfo}
             gradeMultiplier={gradeMultiplier}
             onGradeChange={handleGradeChange}
