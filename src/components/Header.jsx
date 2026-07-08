@@ -4,7 +4,6 @@ import ExportButton from './ExportButton'
 import { useAuth } from '../contexts/AuthContext'
 import { ROLES } from '../utils/constants'
 
-// Main navigation — links to the app's top-level pages.
 const NAV_ITEMS = [
   { to: '/', icon: '🔍', label: 'วิเคราะห์แบบบ้าน', end: true },
   { to: '/catalog', icon: '🏠', label: 'แคตตาล็อกแบบบ้าน' },
@@ -14,14 +13,13 @@ const NAV_ITEMS = [
 
 function Header({ children, onBack }) {
   const { user, logout } = useAuth()
+  const displayName = user?.name || user?.memberEmail || 'ผู้ใช้งาน'
 
   const roleBadge =
     user?.role === ROLES.CONTRACTOR
-      ? { icon: '👷', label: 'ผู้รับเหมา', color: '#e07a2f' }
+      ? { icon: '👷', label: displayName, color: '#e07a2f' }
       : null
 
-  // ปุ่มย้อนกลับ: ใช้ onBack ที่ page ส่งมาเป็นหลัก (in-app navigation)
-  // ถ้าไม่ส่ง onBack มา → fallback เป็น window.history.back()
   const handleBack = () => {
     if (typeof onBack === 'function') onBack()
     else window.history.back()
@@ -54,14 +52,16 @@ function Header({ children, onBack }) {
           </div>
           {roleBadge && (
             <span
-              className="ml-2 hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+              className="ml-2 hidden sm:inline-flex max-w-40 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] truncate"
               style={{
                 backgroundColor: `${roleBadge.color}22`,
                 color: roleBadge.color,
                 border: `1px solid ${roleBadge.color}55`,
               }}
+              title={roleBadge.label}
             >
-              {roleBadge.icon} {roleBadge.label}
+              <span>{roleBadge.icon}</span>
+              <span className="truncate">{roleBadge.label}</span>
             </span>
           )}
         </div>
@@ -71,18 +71,25 @@ function Header({ children, onBack }) {
           <ExportButton />
           <ThemeToggle />
           {user && (
+            <NavLink
+              to="/account/billing"
+              className="px-2.5 py-1.5 text-xs rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent transition-colors"
+            >
+              จัดการโปรไฟล์
+            </NavLink>
+          )}
+          {user && (
             <button
               type="button"
               onClick={logout}
               className="px-2.5 py-1.5 text-xs rounded-md border border-line text-ink-soft hover:text-ink hover:border-danger transition-colors"
             >
-              ออก
+              ออกจากระบบ
             </button>
           )}
         </div>
       </div>
 
-      {/* Main navigation menu */}
       {user && (
         <nav className="border-t border-line/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto">
