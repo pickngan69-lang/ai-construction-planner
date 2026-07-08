@@ -5,7 +5,9 @@ function GradeSelector({ value, onChange, compact = false }) {
   return (
     <div
       className={cn(
-        compact ? 'flex gap-2' : 'grid grid-cols-1 sm:grid-cols-3 gap-3',
+        compact
+          ? 'flex flex-wrap gap-2'
+          : 'grid grid-cols-2 lg:grid-cols-4 gap-3',
       )}
     >
       {MATERIAL_GRADES.map((g) => {
@@ -43,7 +45,9 @@ function GradeSelector({ value, onChange, compact = false }) {
             )}
             {!compact && (
               <p className="text-[11px] text-ink-muted mt-2 font-mono">
-                ×{g.multiplier.toFixed(2)} ค่าวัสดุ
+                {g.multiplier != null
+                  ? `×${g.multiplier.toFixed(2)} ค่าวัสดุ`
+                  : 'ระบุราคาเอง'}
               </p>
             )}
           </button>

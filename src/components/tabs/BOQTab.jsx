@@ -4,12 +4,17 @@ import GuidePopup from '../GuidePopup'
 import { PHASE_COLORS, MATERIAL_GRADES } from '../../utils/constants'
 import { formatBaht, formatNumber } from '../../utils/formatters'
 
-function BOQTab({ result, gradeMultiplier, isManual, onUpdateTask, onEditTask, onDeleteTask, onAddTask }) {
+function BOQTab({ result, gradeMultiplier, gradeId, isManual, onUpdateTask, onEditTask, onDeleteTask, onAddTask }) {
   const phases = result.phases || []
   const allTasks = result.allTasks || []
-  const grade = MATERIAL_GRADES.find(
-    (g) => Math.abs(g.multiplier - gradeMultiplier) < 0.001,
-  )
+  // เลือกด้วย id ก่อน (แม่นยำ รองรับเกรด custom); ถ้าไม่ได้ส่ง id มา ค่อย match ด้วยตัวคูณ
+  const grade =
+    MATERIAL_GRADES.find((g) => g.id === gradeId) ||
+    MATERIAL_GRADES.find(
+      (g) =>
+        g.multiplier != null &&
+        Math.abs(g.multiplier - gradeMultiplier) < 0.001,
+    )
 
   const phaseRows = useMemo(() => {
     return phases.map((phase, idx) => {
@@ -47,7 +52,9 @@ function BOQTab({ result, gradeMultiplier, isManual, onUpdateTask, onEditTask, o
           <span className="text-ink font-medium">
             {grade?.icon} {grade?.label || 'มาตรฐาน'}
           </span>{' '}
-          (×{gradeMultiplier.toFixed(2)} ค่าวัสดุ)
+          {grade?.multiplier != null
+            ? `(×${gradeMultiplier.toFixed(2)} ค่าวัสดุ)`
+            : '(ราคาที่กำหนดเอง)'}
           <GuidePopup title="BOQ และเกรดวัสดุ">
             <p>
               BOQ แยก "ค่าวัสดุ" และ "ค่าแรง" ออกจากกัน — เกรดวัสดุจะคูณกับ

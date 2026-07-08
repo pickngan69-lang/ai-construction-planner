@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/', icon: '🔍', label: 'วิเคราะห์แบบบ้าน', end: true },
   { to: '/catalog', icon: '🏠', label: 'แคตตาล็อกแบบบ้าน' },
   { to: '/projects', icon: '📋', label: 'โปรเจกต์ทั้งหมด' },
+  { to: '/materials', icon: '🏷️', label: 'ราคากลางวัสดุ' },
 ]
 
 function Header({ children, onBack }) {

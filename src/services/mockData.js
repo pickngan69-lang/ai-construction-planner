@@ -297,6 +297,32 @@ const MATERIAL_BASE = [
   },
 ]
 
+// Flattened brand → price catalog for the "ราคาที่กำหนด" (custom) grade
+// autocomplete. Each tier's brand spec becomes one lookup entry so the
+// contractor can type a brand and pull its standard price (then edit it).
+// Also the offline fallback for erpService when the ERP backend is unreachable.
+export function buildBrandPriceIndex() {
+  const out = []
+  const seen = new Set()
+  for (const m of MATERIAL_BASE) {
+    for (const tier of ['economy', 'standard', 'premium']) {
+      const t = m[tier]
+      if (!t?.spec) continue
+      const key = t.spec.trim().toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        label: t.spec, // แบรนด์/สเปกที่ผู้ใช้พิมพ์ค้นหา
+        price: t.price, // ราคามาตรฐานของแบรนด์นั้น
+        unit: m.unit,
+        name: m.name, // ชื่อวัสดุกลาง (เติมให้อัตโนมัติได้)
+        tier,
+      })
+    }
+  }
+  return out
+}
+
 // Lump-sum labor estimate per tier (V5 materialLabor). Economy ≈ 0.85× of the
 // standard estimate, premium ≈ 1.3× — mirrors the SYSTEM_PROMPT guidance.
 const MATERIAL_LABOR = {

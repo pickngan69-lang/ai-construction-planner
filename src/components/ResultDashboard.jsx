@@ -429,6 +429,18 @@ function ResultDashboard({
       installments: DEFAULT_INSTALLMENTS.map((i) => ({ ...i })),
       imageUrl: cover?.url || cover?.preview || null,
       createdAt: Date.now(),
+      // เก็บ snapshot ผลวิเคราะห์ไว้กับโปรเจกต์ เพื่อเปิดกลับมาดูภายหลังได้
+      analysis: {
+        projectInfo,
+        snapshot: {
+          result,
+          edits,
+          materialEdits,
+          materialLaborByGrade,
+          addedTasks,
+          deletedTaskIds,
+        },
+      },
     })
     setShowSaveModal(false)
     navigate('/projects')
@@ -596,6 +608,7 @@ function ResultDashboard({
           <BOQTab
             result={adjustedResult}
             gradeMultiplier={gradeMultiplier}
+            gradeId={projectInfo?.grade}
             isManual={isManual}
             onUpdateTask={updateTask}
             onEditTask={openEditTask}

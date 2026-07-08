@@ -9,12 +9,14 @@ const EMPTY_MATERIAL_EDITS = Object.freeze({
   economy: [],
   standard: [],
   premium: [],
+  custom: [], // เกรด "ราคาที่กำหนด" — ผู้รับเหมากรอกเอง เริ่มว่าง
 })
 
 const EMPTY_MATERIAL_LABOR = Object.freeze({
   economy: 0,
   standard: 0,
   premium: 0,
+  custom: 0,
 })
 
 function initializeTasks(phases = []) {
@@ -116,6 +118,7 @@ function buildMaterialLaborFromAi(aiLabor) {
     economy: Number(aiLabor.economy) || 0,
     standard: Number(aiLabor.standard) || 0,
     premium: Number(aiLabor.premium) || 0,
+    custom: 0, // custom เริ่มที่ 0 เสมอ — ผู้รับเหมากรอกเอง
   }
 }
 
@@ -141,6 +144,7 @@ function buildMaterialEditsFromAi(aiMaterials) {
     economy: tag('economy'),
     standard: tag('standard'),
     premium: tag('premium'),
+    custom: [], // AI ไม่สร้างให้ — ผู้รับเหมากรอกเอง
   }
 }
 
@@ -377,6 +381,22 @@ export function useAnalysis() {
     setMode('manual')
   }, [])
 
+  // คัดลอกรายการวัสดุจากเกรดหนึ่งไปอีกเกรด (ใช้กับปุ่ม "ดึงรายการจากเกรดมาตรฐาน"
+  // ในแท็บ 'ราคาที่กำหนด") — clone id ใหม่, ข้ามรายการที่ถูกลบ, ต่อท้ายของเดิม
+  const copyMaterials = useCallback((from, to) => {
+    if (!from || !to || from === to) return
+    setMaterialEdits((prev) => {
+      const src = (prev[from] || []).filter((m) => !m.isDeleted)
+      const cloned = src.map((m) => ({
+        ...m,
+        id: newMaterialId(),
+        isDeleted: false,
+      }))
+      return { ...prev, [to]: [...(prev[to] || []), ...cloned] }
+    })
+    setMode('manual')
+  }, [])
+
   const getMaterialItems = useCallback(
     (grade, { includeDeleted = false } = {}) => {
       const list = materialEdits[grade] || []
@@ -419,6 +439,7 @@ export function useAnalysis() {
     materialEdits,
     updateMaterial,
     deleteMaterial,
+    copyMaterials,
     getMaterialItems,
     calculateMaterialTotal,
     // Lump-sum labor per tier

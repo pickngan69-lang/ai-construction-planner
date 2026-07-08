@@ -1,20 +1,20 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ThemeProvider } from './contexts/ThemeContext'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AnalysisProvider } from './contexts/AnalysisContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProjectProvider } from './contexts/ProjectContext'
-import ContractorDashboard from './pages/ContractorDashboard'
-import HouseCatalog from './pages/HouseCatalog'
-import MultiProjectDashboard from './pages/MultiProjectDashboard'
-import ProjectDetail from './pages/ProjectDetail'
-import CustomerSummary from './pages/CustomerSummary'
-import PricingPage from './features/billing/PricingPage'
+import { ThemeProvider } from './contexts/ThemeContext'
 import AccountBillingPage from './features/billing/AccountBillingPage'
 import CheckoutSuccessPage from './features/billing/CheckoutSuccessPage'
-import RegisterPage from './features/auth/RegisterPage'
+import PricingPage from './features/billing/PricingPage'
 import MemberLoginPage from './features/auth/MemberLoginPage'
+import RegisterPage from './features/auth/RegisterPage'
+import ContractorDashboard from './pages/ContractorDashboard'
+import CustomerSummary from './pages/CustomerSummary'
+import HouseCatalog from './pages/HouseCatalog'
+import MaterialPrices from './pages/MaterialPrices'
+import MultiProjectDashboard from './pages/MultiProjectDashboard'
+import ProjectDetail from './pages/ProjectDetail'
 
-// หน้าฝั่งผู้รับเหมาต้อง login ก่อน — ถ้ายังไม่ login แสดงหน้า MemberLoginPage
 function RequireAuth({ children }) {
   const { user } = useAuth()
   return user ? children : <MemberLoginPage />
@@ -28,7 +28,6 @@ function App() {
           <ProjectProvider>
             <BrowserRouter>
               <Routes>
-                {/* หน้าลูกค้า (Magic Link) — public เข้าได้โดยไม่ต้อง login */}
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/member/login" element={<MemberLoginPage />} />
@@ -36,7 +35,6 @@ function App() {
                 <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
                 <Route path="/shared/:id" element={<CustomerSummary />} />
 
-                {/* หน้าฝั่งผู้รับเหมา — ต้อง login */}
                 <Route
                   path="/"
                   element={
@@ -50,6 +48,14 @@ function App() {
                   element={
                     <RequireAuth>
                       <HouseCatalog />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/materials"
+                  element={
+                    <RequireAuth>
+                      <MaterialPrices />
                     </RequireAuth>
                   }
                 />
