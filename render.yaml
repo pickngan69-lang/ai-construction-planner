@@ -1,0 +1,49 @@
+# Render Blueprint — AI Construction Planner
+# ────────────────────────────────────────────────────────────────────────────
+# วิธีใช้ (2 แบบ):
+#
+#  A) มี service เดิมอยู่แล้ว (frontend ตั้งค่า manual):
+#     ไม่ต้องแตะ Blueprint — แค่ push โค้ดขึ้น branch ที่ service นั้น auto-deploy
+#     ไฟล์นี้ใช้เป็น "เอกสารกำหนดค่า" + ช่วย deploy ERP backend (service ใหม่)
+#
+#  B) เริ่มใหม่ทั้งหมดด้วย Blueprint:
+#     Render Dashboard → New + → Blueprint → เลือก repo นี้ → Apply
+#     ⚠️ Blueprint จะสร้าง service *ใหม่* (ไม่แก้ของเดิม) — ระวังชื่อชนกัน
+#
+# secret ทุกตัวตั้ง sync:false → ต้องกรอกค่าจริงใน Render dashboard เอง
+# (ห้ามใส่คีย์จริงในไฟล์นี้ เพราะไฟล์นี้ commit ขึ้น git)
+# ────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Service 1: Frontend + Node proxy (Anthropic + auth + billing) ──────────
+  - type: web
+    name: ai-construction-planner
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start          # = node server.js (serve dist/ + /api/*)
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY       # จำเป็น — /api/analyze
+        sync: false
+      - key: APP_URL                 # URL เว็บจริง (ใช้ทำ return-uri ตอนชำระเงิน)
+        sync: false
+      - key: OMISE_SECRET_KEY        # billing (PromptPay) — ไม่ใส่ = ปิด checkout
+        sync: false
+      - key: VITE_ERP_API_URL        # build-time — URL ของ ERP service (ข้อ 2)
+        sync: false                  # ไม่ใส่ = frontend ใช้ราคาวัสดุ bundle offline
+
+  # ── Service 2: ERP backend (Flask + Supabase Postgres) ─────────────────────
+  - type: web
+    name: ai-erp-backend
+    runtime: python
+    plan: free
+    rootDir: erp-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL            # จำเป็น — Supabase connection string (URI)
+        sync: false
+      - key: PYTHON_VERSION          # กัน build fail เรื่อง Python version
+        value: 3.12.6
