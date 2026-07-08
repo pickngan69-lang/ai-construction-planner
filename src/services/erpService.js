@@ -1,8 +1,17 @@
 // ERP backend client (Supabase-backed Flask service on :5001).
-// In dev, Vite proxies /api/erp → :5001. In prod without the ERP service,
-// calls fail and we fall back to the bundled brand catalog — so the UI
-// (brand autocomplete in the "ราคาที่กำหนด" grade) always works.
+//
+// - Dev: leave VITE_ERP_API_URL unset → calls are same-origin (/api/erp/*) and
+//   Vite proxies them to :5001.
+// - Prod: the ERP service is a separate Render service, so set
+//   VITE_ERP_API_URL=https://<erp-service>.onrender.com and the frontend calls
+//   it cross-origin (the Flask app has CORS enabled).
+//
+// Read (brand catalog) always falls back to the bundled catalog when the
+// backend is unreachable, so the UI keeps working offline.
 import { buildBrandPriceIndex } from './mockData'
+
+const ERP_BASE = (import.meta.env.VITE_ERP_API_URL || '').replace(/\/$/, '')
+const url = (path) => `${ERP_BASE}${path}`
 
 // Local brand catalog — always available, works offline.
 const LOCAL_INDEX = buildBrandPriceIndex()
@@ -34,12 +43,12 @@ function mergeDbPrices(local, dbRows) {
   return [...byLabel.values()]
 }
 
-// Brand → price catalog for the custom-price grade.
+// Brand → price catalog for the custom-price grade autocomplete.
 // Tries the ERP backend (Supabase) first; falls back to the bundled catalog
 // when the backend isn't reachable. Never throws.
 export async function fetchMarketPrices({ signal } = {}) {
   try {
-    const res = await fetch('/api/erp/materials', { signal })
+    const res = await fetch(url('/api/erp/materials'), { signal })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const rows = await res.json()
     if (!Array.isArray(rows)) throw new Error('unexpected shape')
@@ -49,4 +58,46 @@ export async function fetchMarketPrices({ signal } = {}) {
   }
 }
 
-export { LOCAL_INDEX }
+// ---- Market-price management (DB required) — these throw on failure so the
+// management UI can surface a clear error / offline state. ----
+
+// Is the ERP backend reachable? (used for the connection badge)
+export async function checkErpHealth({ signal } = {}) {
+  try {
+    const res = await fetch(url('/api/erp/health'), { signal })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+// Raw DB rows [{ id, material_name, current_price, last_updated }]
+export async function listMarketPrices({ signal } = {}) {
+  const res = await fetch(url('/api/erp/materials'), { signal })
+  if (!res.ok) throw new Error(`โหลดราคาไม่สำเร็จ (HTTP ${res.status})`)
+  return res.json()
+}
+
+// Create (no id) or update (with id) one material price. Returns the saved row.
+export async function saveMarketPrice(row) {
+  const body = JSON.stringify({
+    material_name: row.material_name,
+    current_price: row.current_price,
+  })
+  const opts = { method: row.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body }
+  const path = row.id ? `/api/erp/materials/${row.id}` : '/api/erp/materials'
+  const res = await fetch(url(path), opts)
+  if (!res.ok) {
+    const msg = await res.json().catch(() => ({}))
+    throw new Error(msg.error || `บันทึกไม่สำเร็จ (HTTP ${res.status})`)
+  }
+  return res.json()
+}
+
+export async function deleteMarketPrice(id) {
+  const res = await fetch(url(`/api/erp/materials/${id}`), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`ลบไม่สำเร็จ (HTTP ${res.status})`)
+  return res.json()
+}
+
+export { LOCAL_INDEX, ERP_BASE }

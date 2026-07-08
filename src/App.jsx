@@ -9,6 +9,7 @@ import HouseCatalog from './pages/HouseCatalog'
 import MultiProjectDashboard from './pages/MultiProjectDashboard'
 import ProjectDetail from './pages/ProjectDetail'
 import CustomerSummary from './pages/CustomerSummary'
+import MaterialPrices from './pages/MaterialPrices'
 
 // หน้าฝั่งผู้รับเหมาต้อง login ก่อน — ถ้ายังไม่ login แสดงหน้า LoginPage
 function RequireAuth({ children }) {
@@ -57,6 +58,14 @@ function App() {
                   element={
                     <RequireAuth>
                       <ProjectDetail />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/materials"
+                  element={
+                    <RequireAuth>
+                      <MaterialPrices />
                     </RequireAuth>
                   }
                 />

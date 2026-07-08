@@ -5,7 +5,7 @@ Database schema is managed with Flask-Migrate (Alembic) — run `flask db upgrad
 """
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
 from dotenv import load_dotenv
@@ -60,7 +60,59 @@ def create_app():
 
     @app.route("/api/erp/materials")
     def list_materials():
-        return jsonify([m.to_dict() for m in MaterialMarketPrice.query.all()])
+        items = MaterialMarketPrice.query.order_by(
+            MaterialMarketPrice.material_name
+        ).all()
+        return jsonify([m.to_dict() for m in items])
+
+    def _parse_price(value):
+        """Return (price, error). price is float when valid."""
+        try:
+            return float(value), None
+        except (TypeError, ValueError):
+            return None, "current_price must be a number"
+
+    @app.route("/api/erp/materials", methods=["POST"])
+    def create_material():
+        data = request.get_json(silent=True) or {}
+        name = (data.get("material_name") or "").strip()
+        if not name:
+            return jsonify({"error": "material_name is required"}), 400
+        price, err = _parse_price(data.get("current_price", 0))
+        if err:
+            return jsonify({"error": err}), 400
+        m = MaterialMarketPrice(material_name=name, current_price=price)
+        db.session.add(m)
+        db.session.commit()
+        return jsonify(m.to_dict()), 201
+
+    @app.route("/api/erp/materials/<int:material_id>", methods=["PUT", "PATCH"])
+    def update_material(material_id):
+        m = db.session.get(MaterialMarketPrice, material_id)
+        if m is None:
+            return jsonify({"error": "not found"}), 404
+        data = request.get_json(silent=True) or {}
+        if "material_name" in data:
+            name = (data.get("material_name") or "").strip()
+            if not name:
+                return jsonify({"error": "material_name cannot be empty"}), 400
+            m.material_name = name
+        if "current_price" in data:
+            price, err = _parse_price(data.get("current_price"))
+            if err:
+                return jsonify({"error": err}), 400
+            m.current_price = price
+        db.session.commit()
+        return jsonify(m.to_dict())
+
+    @app.route("/api/erp/materials/<int:material_id>", methods=["DELETE"])
+    def delete_material(material_id):
+        m = db.session.get(MaterialMarketPrice, material_id)
+        if m is None:
+            return jsonify({"error": "not found"}), 404
+        db.session.delete(m)
+        db.session.commit()
+        return jsonify({"deleted": material_id})
 
     return app
 

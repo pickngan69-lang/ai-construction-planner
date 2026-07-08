@@ -52,6 +52,9 @@ python app.py            # http://localhost:5001
 | GET | `/api/erp/health` | Health check |
 | GET | `/api/erp/projects` | List projects |
 | GET | `/api/erp/materials` | List material market prices |
+| POST | `/api/erp/materials` | Add a material price `{material_name, current_price}` |
+| PUT | `/api/erp/materials/<id>` | Update a material price |
+| DELETE | `/api/erp/materials/<id>` | Delete a material price |
 
 ## Models (`models.py`)
 
@@ -59,9 +62,24 @@ python app.py            # http://localhost:5001
 - **FinancialTracking** — `id`, `project_id`, `boq_budget`, `actual_cost`, `total_installment_paid`
 - **MaterialMarketPrice** — `id`, `material_name`, `current_price`, `last_updated`
 
-## Deploy (Render Web Service, Python)
+## Deploy (Render — Python Web Service แยกอีก 1 service)
 
-- Build: `pip install -r requirements.txt`
-- Pre-deploy / release: `flask db upgrade`
-- Start: `gunicorn app:app` (เพิ่ม `gunicorn` ใน requirements) หรือ `python app.py`
-- Env: `DATABASE_URL` = Supabase pooler URI
+Frontend (Node/`server.js`) กับ ERP นี้เป็นคนละ service — ให้สร้าง **Web Service ใหม่**
+ชี้ root directory มาที่ `erp-backend/`:
+
+- **Build:** `pip install -r requirements.txt`
+- **Start:** `gunicorn app:app --bind 0.0.0.0:$PORT` (มี `gunicorn` ใน requirements แล้ว · หรือใช้ `Procfile`)
+- **Env `DATABASE_URL`** = Supabase pooler URI (`app.py` เติม `sslmode=require` ให้เอง)
+- รัน migrations ครั้งแรก: `flask db upgrade` (หรือ `Procfile` มี `release: flask db upgrade`)
+  — หรือถ้าใช้ SQL Editor ก็รัน `migrations/001` + `002` แทน
+
+### ให้ frontend ออนไลน์คุยกับ ERP นี้
+ERP เปิด **CORS** ไว้แล้ว → ที่ **frontend service** (Node) ตั้ง env:
+```
+VITE_ERP_API_URL=https://<erp-service-name>.onrender.com
+```
+แล้ว rebuild frontend — หน้าเว็บจะเรียก `${VITE_ERP_API_URL}/api/erp/*` ข้าม origin ได้
+(ถ้าไม่ตั้ง → frontend จะ fallback ใช้แคตตาล็อกราคาในเครื่อง)
+
+> 🔒 หมายเหตุความปลอดภัย: endpoint เขียน (POST/PUT/DELETE) ยังเปิด public (ไม่มี auth)
+> — เหมาะกับช่วงทดสอบ · ก่อนใช้จริงควรเพิ่มการยืนยันตัวตน (เช่น API key / Supabase Auth)
