@@ -227,6 +227,22 @@ export function useAnalysis() {
     }
   }, [])
 
+  // โหลดผลวิเคราะห์ที่บันทึกไว้ (snapshot ในโปรเจกต์) กลับมาแสดงที่หน้า RESULT
+  const loadSnapshot = useCallback((snapshot) => {
+    if (!snapshot?.result) return
+    setError(null)
+    setResult(snapshot.result)
+    setEdits(snapshot.edits || {})
+    setMaterialEdits(snapshot.materialEdits || { ...EMPTY_MATERIAL_EDITS })
+    setMaterialLaborByGradeState(
+      snapshot.materialLaborByGrade || { ...EMPTY_MATERIAL_LABOR },
+    )
+    setAddedTasks(snapshot.addedTasks || [])
+    setDeletedTaskIds(snapshot.deletedTaskIds || [])
+    setMode('manual')
+    setStep(STEPS.RESULT)
+  }, [])
+
   const reset = useCallback(() => {
     setStep(STEPS.INPUT)
     setResult(null)
@@ -390,6 +406,7 @@ export function useAnalysis() {
     error,
     run,
     reset,
+    loadSnapshot,
     setMode,
     updateTask,
     clearEdits,

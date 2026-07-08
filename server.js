@@ -6,9 +6,16 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import authRouter from './server/auth/routes.js'
+import billingRouter from './server/billing/routes.js'
 
 dotenv.config()
-
+const localEnv = dotenv.config({ path: '.env.local' })
+if (localEnv.parsed) {
+  Object.entries(localEnv.parsed).forEach(([key, value]) => {
+    if (value) process.env[key] = value
+  })
+}
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -18,6 +25,9 @@ const distPath = path.join(__dirname, 'dist')
 
 app.use(cors())
 app.use(express.json({ limit: '50mb' })) // base64 images can be several MB
+
+app.use('/api/auth', authRouter)
+app.use('/api/billing', billingRouter)
 
 // ---- API proxy: forward the request body to Anthropic with the secret key ----
 app.post('/api/analyze', async (req, res) => {

@@ -33,3 +33,6 @@ venv/
 *.njsproj
 *.sln
 *.sw?
+
+# Dev auth/session store
+server/.data/

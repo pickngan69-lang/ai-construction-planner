@@ -37,11 +37,21 @@ export function AuthProvider({ children }) {
     return { ok: true }
   }
 
+  const loginMemberUser = (member) => {
+    setUser({
+      role: ROLES.CONTRACTOR,
+      name: member?.name || member?.email || 'Member',
+      memberId: member?.id,
+      memberEmail: member?.email,
+    })
+    return { ok: true }
+  }
+
   const logout = () => setUser(null)
 
   return (
     <AuthContext.Provider
-      value={{ user, loginContractor, loginHomeowner, logout }}
+      value={{ user, loginContractor, loginHomeowner, loginMemberUser, logout }}
     >
       {children}
     </AuthContext.Provider>
