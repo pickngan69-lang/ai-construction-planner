@@ -22,6 +22,7 @@
 | ไฟล์ | โมดูล | สร้างอะไร |
 |---|---|---|
 | `001_init_erp.sql` | ERP core | `projects`, `financial_tracking`, `material_market_prices` + RLS + trigger + seed |
+| `002_seed_material_brands.sql` | ERP core | seed ราคาแบรนด์ 57 รายการเข้า `material_market_prices` (ใช้กับ autocomplete เกรด "ราคาที่กำหนด") |
 
 > โมดูลอื่นของทีม: สร้างไฟล์ `002_...`, `003_...` ต่อได้เลย
 >

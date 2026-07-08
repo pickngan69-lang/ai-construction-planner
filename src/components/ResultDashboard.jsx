@@ -608,6 +608,7 @@ function ResultDashboard({
           <BOQTab
             result={adjustedResult}
             gradeMultiplier={gradeMultiplier}
+            gradeId={projectInfo?.grade}
             isManual={isManual}
             onUpdateTask={updateTask}
             onEditTask={openEditTask}

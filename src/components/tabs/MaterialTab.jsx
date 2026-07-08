@@ -5,6 +5,9 @@ import GuidePopup from '../GuidePopup'
 import { MATERIAL_GRADES } from '../../utils/constants'
 import { formatBaht, formatNumber } from '../../utils/formatters'
 import { useAnalysisContext } from '../../contexts/AnalysisContext'
+import { fetchMarketPrices } from '../../services/erpService'
+
+const BRAND_LIST_ID = 'material-brand-list'
 
 const inputClass =
   'w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors'
@@ -19,12 +22,37 @@ const EMPTY_DRAFT = {
 }
 
 // ========== Modal: edit/add material ==========
-function MaterialModal({ initial, onSave, onClose }) {
+function MaterialModal({ initial, onSave, onClose, brands = [] }) {
   const [draft, setDraft] = useState(() => ({
     ...EMPTY_DRAFT,
     ...(initial || {}),
   }))
   const isNew = !initial?.id
+
+  // Brand → price lookup for autocomplete (พิมพ์แบรนด์แล้วดึงราคามาตรฐานมาให้)
+  const brandByLabel = useMemo(() => {
+    const map = new Map()
+    for (const b of brands) map.set(b.label.trim().toLowerCase(), b)
+    return map
+  }, [brands])
+  const brandMatch =
+    brandByLabel.get((draft.spec || '').trim().toLowerCase()) || null
+
+  // เมื่อค่าในช่องแบรนด์ตรงกับแบรนด์ที่รู้จัก → เติมราคา/หน่วย/ชื่อให้อัตโนมัติ
+  // (ราคาเปลี่ยนตามแบรนด์เสมอ แต่ผู้ใช้แก้ทับได้ · หน่วย/ชื่อเติมเฉพาะช่องที่ยังว่าง)
+  const handleSpecChange = (spec) => {
+    setDraft((d) => {
+      const hit = brandByLabel.get(spec.trim().toLowerCase())
+      if (!hit) return { ...d, spec }
+      return {
+        ...d,
+        spec,
+        pricePerUnit: hit.price,
+        unit: d.unit || hit.unit || '',
+        name: d.name?.trim() ? d.name : hit.name || '',
+      }
+    })
+  }
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -94,17 +122,33 @@ function MaterialModal({ initial, onSave, onClose }) {
 
           <label className="block">
             <span className="block text-xs text-ink-soft mb-1.5">
-              สเปก / ยี่ห้อ
+              แบรนด์ / ยี่ห้อ{' '}
+              <span className="text-ink-muted">— พิมพ์เพื่อดึงราคา</span>
             </span>
             <input
               type="text"
               value={draft.spec}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, spec: e.target.value }))
-              }
-              placeholder="เช่น ตราเสือ 50 กก."
+              onChange={(e) => handleSpecChange(e.target.value)}
+              placeholder="เช่น SCG 50 กก. (เลือกจากรายการเพื่อดึงราคา)"
               className={inputClass}
+              list={BRAND_LIST_ID}
+              autoComplete="off"
             />
+            <datalist id={BRAND_LIST_ID}>
+              {brands.map((b) => (
+                <option
+                  key={b.label}
+                  value={b.label}
+                  label={`${formatBaht(b.price)}${b.unit ? ` / ${b.unit}` : ''}`}
+                />
+              ))}
+            </datalist>
+            {brandMatch && (
+              <p className="mt-1 text-[11px] text-success">
+                💡 ดึงราคามาตรฐานของแบรนด์นี้ {formatBaht(brandMatch.price)}
+                {brandMatch.unit ? ` / ${brandMatch.unit}` : ''} มาให้แล้ว — แก้ราคาด้านล่างได้
+              </p>
+            )}
           </label>
 
           <div className="grid grid-cols-2 gap-3">
@@ -229,7 +273,7 @@ function TierTabs({ value, onChange }) {
           >
             {g.icon} {g.label}
             <span className="ml-1.5 opacity-70 text-xs font-mono">
-              ×{g.multiplier.toFixed(2)}
+              {g.multiplier != null ? `×${g.multiplier.toFixed(2)}` : 'กรอกเอง'}
             </span>
           </button>
         )
@@ -294,6 +338,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
     materialEdits,
     updateMaterial,
     deleteMaterial,
+    copyMaterials,
     calculateMaterialTotal,
     materialLaborByGrade,
     setMaterialLabor,
@@ -301,9 +346,22 @@ function MaterialTab({ projectInfo, onGradeChange }) {
 
   const grade = projectInfo?.grade || 'standard'
   const gradeMeta = MATERIAL_GRADES.find((g) => g.id === grade)
+  const isCustom = gradeMeta?.custom === true
 
   const [editing, setEditing] = useState(null) // null | { item } | 'new'
   const [confirmDelete, setConfirmDelete] = useState(null)
+
+  // แคตตาล็อกแบรนด์+ราคา (ยิง Supabase ก่อน → fallback แคตตาล็อกในเครื่อง)
+  const [brands, setBrands] = useState([])
+  const [priceSource, setPriceSource] = useState(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchMarketPrices({ signal: controller.signal }).then((r) => {
+      setBrands(r.items)
+      setPriceSource(r.source)
+    })
+    return () => controller.abort()
+  }, [])
 
   const items = useMemo(
     () => (materialEdits[grade] || []).filter((m) => !m.isDeleted),
@@ -325,6 +383,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
     setConfirmDelete(null)
   }
   const handleLaborChange = (n) => setMaterialLabor(grade, n)
+  const handleCopyFromStandard = () => copyMaterials('standard', grade)
 
   return (
     <div className="space-y-4">
@@ -355,6 +414,16 @@ function MaterialTab({ projectInfo, onGradeChange }) {
             กำลังแก้: <span className="text-ink font-medium">{gradeMeta.icon} {gradeMeta.label}</span> — {gradeMeta.desc}
           </p>
         )}
+        {isCustom && (
+          <p className="text-xs text-info flex items-center gap-1.5">
+            ✏️ กรอกแบรนด์และราคาเอง — พิมพ์ชื่อแบรนด์ในช่อง "แบรนด์/ยี่ห้อ"
+            เพื่อดึงราคามาตรฐานมาให้ (แก้ได้)
+            <span className="text-ink-muted">
+              · ราคาอ้างอิงจาก{' '}
+              {priceSource === 'db' ? 'ฐานข้อมูล Supabase' : 'แคตตาล็อกในเครื่อง'}
+            </span>
+          </p>
+        )}
       </div>
 
       <LaborInput
@@ -374,7 +443,9 @@ function MaterialTab({ projectInfo, onGradeChange }) {
               </span>
             </p>
             <p className="text-xs text-ink-muted">
-              คลิก "+ เพิ่มรายการวัสดุ" ด้านล่างเพื่อเริ่ม
+              {isCustom
+                ? 'คลิก "+ เพิ่มรายการวัสดุ" (พิมพ์แบรนด์เพื่อดึงราคา) หรือ "📋 ดึงรายการจากเกรดมาตรฐาน" เพื่อเริ่ม'
+                : 'คลิก "+ เพิ่มรายการวัสดุ" ด้านล่างเพื่อเริ่ม'}
             </p>
           </div>
         ) : (
@@ -491,10 +562,17 @@ function MaterialTab({ projectInfo, onGradeChange }) {
         </Card>
       )}
 
-      <div className="flex justify-between items-center gap-3 no-print">
-        <Button variant="secondary" onClick={() => setEditing('new')}>
-          ➕ เพิ่มรายการวัสดุ
-        </Button>
+      <div className="flex flex-wrap justify-between items-center gap-3 no-print">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setEditing('new')}>
+            ➕ เพิ่มรายการวัสดุ
+          </Button>
+          {isCustom && (
+            <Button variant="secondary" onClick={handleCopyFromStandard}>
+              📋 ดึงรายการจากเกรดมาตรฐาน
+            </Button>
+          )}
+        </div>
         <p className="text-xs text-ink-muted">
           การเปลี่ยนแปลงจะ sync ไป Summary, BOQ, และ Contract อัตโนมัติ
         </p>
@@ -505,6 +583,7 @@ function MaterialTab({ projectInfo, onGradeChange }) {
           initial={editing === 'new' ? null : editing}
           onSave={handleSave}
           onClose={() => setEditing(null)}
+          brands={brands}
         />
       )}
 
