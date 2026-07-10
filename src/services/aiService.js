@@ -186,11 +186,27 @@ export async function analyzeHouse(files, projectInfo) {
     throw new Error(`API error ${response.status}: ${errText.slice(0, 300)}`)
   }
 
-  const data = await response.json()
+  let data
+  try {
+    data = await response.json()
+  } catch {
+    // 2xx แต่ body ว่าง/ไม่ครบ → มักเป็น timeout เพราะไฟล์ใหญ่/หลายหน้า
+    throw new Error(
+      'เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์ (อาจหมดเวลาเพราะไฟล์ใหญ่/หลายหน้า) — ' +
+        'ลองแนบเฉพาะหน้าที่จำเป็น ย่อขนาด PDF หรือใช้รูปแปลนแทน แล้ววิเคราะห์ใหม่',
+    )
+  }
   if (data.error) throw new Error(data.error.message || 'AI returned an error')
 
   const textBlock = (data.content || []).find((b) => b.type === 'text')
   if (!textBlock?.text) throw new Error('AI ไม่ได้ส่งข้อความตอบกลับ')
 
-  return repairJSON(textBlock.text)
+  try {
+    return repairJSON(textBlock.text)
+  } catch {
+    // คำตอบ AI ถูกตัดกลางคัน (มักเพราะข้อมูลเข้าเยอะจนผลลัพธ์ยาวเกิน max_tokens)
+    throw new Error(
+      'AI ตอบกลับไม่ครบ (JSON ถูกตัดกลางคัน) — ลองวิเคราะห์ใหม่ หรือลดจำนวนหน้า/รายละเอียดที่แนบ',
+    )
+  }
 }
