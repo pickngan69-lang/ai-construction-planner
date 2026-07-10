@@ -1,6 +1,6 @@
--- Subscription/Billing module v1
--- Keep this schema separate from ERP tables so the billing work can ship
--- without touching construction/project-management modules.
+-- Subscription/Billing module v2
+-- Clean schema for a fresh Supabase project.
+-- Run after ERP migrations. Prices are before VAT; VAT 7% is calculated and stored per payment.
 
 CREATE TABLE IF NOT EXISTS app_users (
   id BIGSERIAL PRIMARY KEY,
@@ -72,43 +72,84 @@ CREATE TABLE IF NOT EXISTS payments (
   provider_checkout_id VARCHAR(255),
   currency CHAR(3) NOT NULL DEFAULT 'THB',
   subtotal_amount NUMERIC(12, 2) NOT NULL,
-  vat_amount NUMERIC(12, 2) NOT NULL,
+  vat_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
   total_amount NUMERIC(12, 2) NOT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'pending',
   paid_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_user_id_created_at
   ON payments(user_id, created_at DESC);
 
-CREATE TABLE IF NOT EXISTS tax_profiles (
+CREATE INDEX IF NOT EXISTS idx_payments_provider_payment_id
+  ON payments(provider, provider_payment_id);
+
+CREATE TABLE IF NOT EXISTS receipt_profiles (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-  tax_name VARCHAR(255) NOT NULL,
-  tax_id VARCHAR(30) NOT NULL,
+  receipt_name VARCHAR(255) NOT NULL,
+  tax_id VARCHAR(30),
   branch VARCHAR(120),
-  address TEXT NOT NULL,
+  address TEXT,
   billing_email VARCHAR(255),
+  note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_tax_profiles_user_id
-  ON tax_profiles(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_receipt_profiles_user_id
+  ON receipt_profiles(user_id);
 
-CREATE TABLE IF NOT EXISTS invoices (
+CREATE TABLE IF NOT EXISTS receipts (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   payment_id BIGINT REFERENCES payments(id) ON DELETE SET NULL,
-  invoice_no VARCHAR(80) NOT NULL UNIQUE,
-  tax_profile_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  receipt_no VARCHAR(80) NOT NULL UNIQUE,
+  receipt_period CHAR(6),
+  receipt_profile_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  amount NUMERIC(12, 2) NOT NULL,
   subtotal_amount NUMERIC(12, 2) NOT NULL,
   vat_amount NUMERIC(12, 2) NOT NULL,
   total_amount NUMERIC(12, 2) NOT NULL,
-  invoice_url TEXT,
+  receipt_url TEXT,
   issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_receipts_user_id_issued_at
+  ON receipts(user_id, issued_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_receipts_receipt_no_unique
+  ON receipts(receipt_no);
+
+CREATE TABLE IF NOT EXISTS receipt_number_counters (
+  period CHAR(6) PRIMARY KEY,
+  last_sequence INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION next_receipt_no(issue_time TIMESTAMPTZ DEFAULT NOW())
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  receipt_period TEXT;
+  next_sequence INTEGER;
+BEGIN
+  receipt_period := TO_CHAR(issue_time AT TIME ZONE 'Asia/Bangkok', 'YYYYMM');
+
+  INSERT INTO receipt_number_counters (period, last_sequence, updated_at)
+  VALUES (receipt_period, 1, NOW())
+  ON CONFLICT (period)
+  DO UPDATE SET
+    last_sequence = receipt_number_counters.last_sequence + 1,
+    updated_at = NOW()
+  RETURNING last_sequence INTO next_sequence;
+
+  RETURN 'RC-' || receipt_period || '-' || LPAD(next_sequence::TEXT, 6, '0');
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS usage_events (
   id BIGSERIAL PRIMARY KEY,

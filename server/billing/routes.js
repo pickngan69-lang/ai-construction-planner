@@ -5,8 +5,10 @@ import { createPromptPayCharge, isOmiseConfigured, retrieveOmiseCharge } from '.
 import {
   createPayment,
   createPaymentId,
+  ensureReceiptNo,
   findPaymentByChargeId,
   getPayment,
+  listPaymentsForUser,
   publicPayment,
   updatePayment,
 } from './paymentsStore.js'
@@ -53,6 +55,11 @@ function getChargeIdFromWebhook(payload) {
   return data?.id || data?.object?.id || null
 }
 
+async function ensureReceiptForPaidPayment(payment) {
+  if (!payment || payment.status !== 'paid') return payment
+  if (payment.receiptNo) return payment
+  return ensureReceiptNo(payment.id, payment.paidAt || payment.updatedAt || payment.createdAt || Date.now())
+}
 async function verifyAndFulfillPayment(payment, chargeInput = null) {
   if (!payment) return { payment: null, user: null }
 
@@ -70,18 +77,23 @@ async function verifyAndFulfillPayment(payment, chargeInput = null) {
   }
 
   if (payment.status === 'paid') {
-    return { payment, user: null }
+    const receiptedPayment = payment.receiptNo
+      ? payment
+      : await ensureReceiptNo(payment.id, payment.paidAt || payment.updatedAt || payment.createdAt || Date.now())
+    return { payment: receiptedPayment, user: null }
   }
 
+  const paidAt = Date.now()
   const plan = findBillingPlan(payment.planCode)
   const user = plan ? await applyBillingPlanToUser(payment.userId, plan, payment) : null
   const updated = await updatePayment(payment.id, {
     status: 'paid',
-    paidAt: Date.now(),
+    paidAt,
     rawProviderStatus: charge?.status || 'successful',
   })
+  const receiptedPayment = await ensureReceiptNo(updated.id, paidAt)
 
-  return { payment: updated, user }
+  return { payment: receiptedPayment, user }
 }
 
 router.get('/plans', (req, res) => {
@@ -183,6 +195,19 @@ router.post('/checkout', async (req, res) => {
   }
 })
 
+router.get('/payments', async (req, res) => {
+  const user = await requireMember(req, res)
+  if (!user) return
+
+  const payments = await listPaymentsForUser(user.id)
+  const paymentsWithReceipts = []
+  for (const payment of payments) {
+    paymentsWithReceipts.push(await ensureReceiptForPaidPayment(payment))
+  }
+  return res.json({
+    payments: paymentsWithReceipts.map(publicPayment),
+  })
+})
 router.get('/payments/:paymentId', async (req, res) => {
   const user = await requireMember(req, res)
   if (!user) return
@@ -199,8 +224,10 @@ router.get('/payments/:paymentId', async (req, res) => {
       ? await verifyAndFulfillPayment(payment)
       : { payment, user: null }
 
+    const paymentWithReceipt = await ensureReceiptForPaidPayment(result.payment)
+
     return res.json({
-      payment: publicPayment(result.payment),
+      payment: publicPayment(paymentWithReceipt),
       user: result.user,
     })
   } catch (err) {

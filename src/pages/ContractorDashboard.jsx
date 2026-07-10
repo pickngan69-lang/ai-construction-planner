@@ -6,6 +6,7 @@ import ProjectForm from '../components/ProjectForm'
 import MockToggle from '../components/MockToggle'
 import AnalyzingScreen from '../components/AnalyzingScreen'
 import ResultDashboard from '../components/ResultDashboard'
+import ContinueWorkStrip from '../components/ContinueWorkStrip'
 import GuidePopup from '../components/GuidePopup'
 import { MATERIAL_GRADES, STEPS } from '../utils/constants'
 import { useAnalysisContext } from '../contexts/AnalysisContext'
@@ -53,6 +54,10 @@ function ContractorDashboard() {
           ...DEFAULT_PROJECT_INFO,
           name: catalogPlan.title || '',
           budget: catalogPlan.budget != null ? String(catalogPlan.budget) : '',
+          area: catalogPlan.area != null ? String(catalogPlan.area) : '',
+          floors: catalogPlan.floors != null ? String(catalogPlan.floors) : '',
+          bedrooms: catalogPlan.beds != null ? String(catalogPlan.beds) : '',
+          bathrooms: catalogPlan.baths != null ? String(catalogPlan.baths) : '',
         }
       : DEFAULT_PROJECT_INFO,
   )
@@ -60,7 +65,8 @@ function ContractorDashboard() {
   const [catalogTitle, setCatalogTitle] = useState(
     () => catalogPlan?.title || null,
   )
-  const { step, result, error, run, reset, loadSnapshot } = useAnalysisContext()
+  const { step, result, error, run, reset, loadSnapshot, setActiveProjectId } =
+    useAnalysisContext()
   const { projects } = useProjects()
   const { logout } = useAuth()
 
@@ -79,7 +85,10 @@ function ContractorDashboard() {
   const gradeMultiplier =
     MATERIAL_GRADES.find((g) => g.id === projectInfo.grade)?.multiplier || 1
 
-  const handleAnalyze = () => run(files, projectInfo, { mock: useMock })
+  const handleAnalyze = () => {
+    setActiveProjectId(null) // วิเคราะห์ใหม่ = ยังไม่ผูกกับโปรเจกต์ใด
+    run(files, projectInfo, { mock: useMock })
+  }
   // Test mode lets you exercise the UI without uploading any file
   const canAnalyze = useMock || files.length > 0
 
@@ -94,32 +103,51 @@ function ContractorDashboard() {
   const handleGradeChange = (grade) =>
     setProjectInfo((prev) => ({ ...prev, grade }))
 
-  // โปรเจกต์ที่บันทึกผลวิเคราะห์ไว้ (เปิดกลับมาดูได้)
-  const savedProjects = projects.filter((p) => p.analysis?.snapshot?.result)
+  // โปรเจกต์ที่กำลังทำอยู่ (ค้าง) — โชว์บนหน้าแรกให้เลือกทำต่อ
+  const activeProjects = projects.filter(
+    (p) => p.status === 'estimating' || p.status === 'building',
+  )
 
-  const handleSelectProject = (e) => {
-    const id = e.target.value
-    if (!id) return
-    const p = projects.find((x) => x.id === id)
-    if (!p?.analysis?.snapshot) return
-    setProjectInfo(p.analysis.projectInfo || DEFAULT_PROJECT_INFO)
-    setFiles(
-      p.imageUrl
-        ? [
-            {
-              id: `saved-${p.id}`,
-              kind: 'image',
-              name: p.name,
-              preview: p.imageUrl,
-              url: p.imageUrl,
-              sourceType: 'url',
-              tag: 'ภาพบันดาลใจ',
-            },
-          ]
-        : [],
-    )
-    setCatalogTitle(null)
-    loadSnapshot(p.analysis.snapshot) // ตั้ง step = RESULT ให้แสดงผลวิเคราะห์
+  // กด "ทำต่อ" → เปิดหน้า BOQ เสมอ:
+  //  • มีผลวิเคราะห์บันทึกไว้ → โหลด BOQ/Gantt เดิมกลับมาแก้ต่อ (RESULT)
+  //  • ยังไม่เคยวิเคราะห์ (เช่นโปรเจกต์ตัวอย่าง) → สร้าง BOQ จากข้อมูลบ้าน
+  //    แล้วเข้าหน้า BOQ เหมือนกดวิเคราะห์ เพื่อเริ่มทำงานต่อได้ทันที
+  const handleContinueProject = (p) => {
+    setActiveProjectId(p.id) // ผูกงานนี้กับโปรเจกต์ → บันทึกแล้วอัปเดตกลับโปรเจกต์เดิม
+    if (p.analysis?.snapshot?.result) {
+      setProjectInfo(p.analysis.projectInfo || DEFAULT_PROJECT_INFO)
+      setFiles(
+        p.imageUrl
+          ? [
+              {
+                id: `saved-${p.id}`,
+                kind: 'image',
+                name: p.name,
+                preview: p.imageUrl,
+                url: p.imageUrl,
+                sourceType: 'url',
+                tag: 'ภาพบันดาลใจ',
+              },
+            ]
+          : [],
+      )
+      setCatalogTitle(null)
+      loadSnapshot(p.analysis.snapshot) // ตั้ง step = RESULT ให้แสดงผลวิเคราะห์
+    } else {
+      const projInfo = {
+        ...DEFAULT_PROJECT_INFO,
+        name: p.name || '',
+        area: p.area != null ? String(p.area) : '',
+        floors: p.floors != null ? String(p.floors) : '',
+        bedrooms: p.beds != null ? String(p.beds) : '',
+        bathrooms: p.baths != null ? String(p.baths) : '',
+        budget: p.boqBudget != null ? String(p.boqBudget) : '',
+      }
+      setProjectInfo(projInfo)
+      setFiles([])
+      setCatalogTitle(p.name || null)
+      run([], projInfo, { mock: true }) // → ANALYZING → RESULT (BOQ)
+    }
   }
 
   // Back behavior — depends on step:
@@ -143,24 +171,11 @@ function ContractorDashboard() {
       </Header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {savedProjects.length > 0 && step !== STEPS.ANALYZING && (
-          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface/60 px-4 py-2.5">
-            <span className="text-sm text-ink-soft">
-              📂 เปิดโปรเจกต์ที่บันทึกไว้:
-            </span>
-            <select
-              value=""
-              onChange={handleSelectProject}
-              className="rounded-md border border-line bg-canvas px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-accent transition-colors"
-            >
-              <option value="">— เลือกโปรเจกต์ —</option>
-              {savedProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.customerName || p.client}
-                </option>
-              ))}
-            </select>
-          </div>
+        {step === STEPS.INPUT && (
+          <ContinueWorkStrip
+            projects={activeProjects}
+            onContinue={handleContinueProject}
+          />
         )}
 
         {step === STEPS.INPUT && (

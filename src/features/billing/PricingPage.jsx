@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
-import { BILLING_PERIODS, calculateVat, SUBSCRIPTION_PLANS } from './plans'
+import { BILLING_PERIODS, calculateReceiptTotal, SUBSCRIPTION_PLANS } from './plans'
 import { createBillingCheckout } from './billingApi'
 
 const moneyFmt = new Intl.NumberFormat('th-TH', {
@@ -21,7 +21,7 @@ function periodLabel(period) {
 }
 
 function PlanCard({ plan, onSelect, disabled, loading }) {
-  const price = calculateVat(plan.price)
+  const price = calculateReceiptTotal(plan.price)
   const isPopular = plan.code === 'pro_monthly'
   const isYearly = plan.code === 'pro_yearly'
 
@@ -125,7 +125,7 @@ function PricingPage() {
               เลือกแพ็กเกจสำหรับ AI Construction Planner
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-ink-soft">
-              ราคาแพ็กเกจแสดงแบบยังไม่รวม VAT 7% และจะแสดงยอดชำระรวมอีกครั้งที่หน้า checkout
+              ราคาแพ็กเกจแสดงเป็นราคาก่อน VAT 7% และระบบจะคิดยอดชำระรวมพร้อมออกใบเสร็จรับเงิน/ใบกำกับภาษี
             </p>
           </div>
           <Button variant="ghost" onClick={() => navigate('/')}>
@@ -152,19 +152,19 @@ function PricingPage() {
         </div>
 
         <Card className="p-5">
-          <h2 className="text-base font-semibold text-ink">เงื่อนไขการชำระเงินและภาษี</h2>
+          <h2 className="text-base font-semibold text-ink">เงื่อนไขการชำระเงินและเอกสารภาษี</h2>
           <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
             <div className="rounded-lg border border-line bg-elevated/30 p-3">
               <p className="font-medium text-ink">ราคาแพ็กเกจ</p>
-              <p className="mt-1 text-ink-soft">ราคาที่แสดงบนการ์ดยังไม่รวม VAT 7% ยอดชำระรวมจะแสดงก่อนยืนยันจ่ายเงิน</p>
+              <p className="mt-1 text-ink-soft">ราคาที่แสดงบนการ์ดคือราคาก่อน VAT 7% และยอดชำระรวมจะแสดงก่อนยืนยันชำระเงิน</p>
             </div>
             <div className="rounded-lg border border-line bg-elevated/30 p-3">
               <p className="font-medium text-ink">รายครั้ง</p>
               <p className="mt-1 text-ink-soft">บันทึกเป็นเครดิต AI 1 ครั้ง ไม่ต่ออายุอัตโนมัติ และเก็บโปรเจกต์ 30 วัน</p>
             </div>
             <div className="rounded-lg border border-line bg-elevated/30 p-3">
-              <p className="font-medium text-ink">รายเดือน/รายปี</p>
-              <p className="mt-1 text-ink-soft">ชำระผ่าน Opn/Omise และเปิดสิทธิ์แพ็กเกจหลังระบบยืนยันรายการสำเร็จ</p>
+              <p className="font-medium text-ink">ใบกำกับภาษี</p>
+              <p className="mt-1 text-ink-soft">ระบบจะใช้ข้อมูลโปรไฟล์สำหรับออกใบเสร็จรับเงิน/ใบกำกับภาษีหลังชำระเงินสำเร็จ</p>
             </div>
           </div>
         </Card>

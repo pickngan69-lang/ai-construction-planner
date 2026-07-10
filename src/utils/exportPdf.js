@@ -25,6 +25,19 @@ export function buildFilename(tabLabel, projectName) {
   return `${tab}_${proj}.pdf`
 }
 
+async function waitForImages(root) {
+  const images = Array.from(root.querySelectorAll('img'))
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve()
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true })
+        img.addEventListener('error', resolve, { once: true })
+      })
+    }),
+  )
+}
+
 function buildBrandedHeader({ projectName, tabLabel }) {
   const wrapper = document.createElement('div')
   wrapper.style.cssText = `
@@ -161,7 +174,8 @@ export async function exportElementToPdf({
 
   document.body.appendChild(wrapper)
 
-  // Allow fonts/layout to settle
+  // Allow fonts/images/layout to settle
+  await waitForImages(wrapper)
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
   // ---- Capture no-break ranges (CSS-px relative to wrapper) ----

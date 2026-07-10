@@ -90,6 +90,35 @@ function buildProjectInfoText(p) {
   return lines.join('\n')
 }
 
+// Anthropic only fetches image URLs that are HTTPS and publicly reachable.
+// Remote https catalog images pass through as `url` sources; local/relative
+// ones (e.g. /plans/house.png) can't be fetched by Anthropic, so we download
+// them in the browser and inline as base64 instead.
+async function resolveImageSource(f) {
+  if (f.sourceType === 'url' && f.url) {
+    if (/^https:\/\//i.test(f.url)) {
+      return { type: 'url', url: f.url }
+    }
+    const res = await fetch(f.url)
+    if (!res.ok) {
+      throw new Error(`โหลดรูปอ้างอิงไม่สำเร็จ: ${f.url} (HTTP ${res.status})`)
+    }
+    const blob = await res.blob()
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.onerror = () => reject(new Error('อ่านรูปอ้างอิงไม่สำเร็จ'))
+      reader.readAsDataURL(blob)
+    })
+    return {
+      type: 'base64',
+      media_type: blob.type || f.mediaType || 'image/png',
+      data: String(dataUrl).split(',')[1],
+    }
+  }
+  return { type: 'base64', media_type: f.mediaType, data: f.base64 }
+}
+
 export async function analyzeHouse(files, projectInfo) {
   if (!files?.length) throw new Error('ต้องแนบไฟล์อย่างน้อย 1 ไฟล์')
 
@@ -100,7 +129,7 @@ export async function analyzeHouse(files, projectInfo) {
   //   pdf   → document block (base64)
   //   sheet → text block with the extracted table content (BOQ/materials)
   let imageCount = 0
-  files.forEach((f) => {
+  for (const f of files) {
     if (f.kind === 'pdf') {
       content.push({
         type: 'document',
@@ -125,20 +154,17 @@ export async function analyzeHouse(files, projectInfo) {
         text: `ข้อความจากไฟล์เอกสาร Word "${f.name || 'เอกสาร'}":\n${f.textContent || '(ไม่มีข้อมูล)'}`,
       })
     } else {
-      // image — catalog reference carries a remote URL (Anthropic fetches it
-      // server-side); uploaded images carry base64 data.
+      // image — catalog reference may be a remote https URL (Anthropic fetches
+      // it) or a local /plans/ image (inlined as base64); uploads are base64.
       imageCount += 1
-      const source =
-        f.sourceType === 'url' && f.url
-          ? { type: 'url', url: f.url }
-          : { type: 'base64', media_type: f.mediaType, data: f.base64 }
+      const source = await resolveImageSource(f)
       content.push({ type: 'image', source })
       content.push({
         type: 'text',
         text: `รูปที่ ${imageCount}: ${f.tag || 'ไม่ระบุ'}`,
       })
     }
-  })
+  }
 
   content.push({ type: 'text', text: buildProjectInfoText(projectInfo) })
 

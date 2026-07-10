@@ -9,12 +9,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // ERP backend (Flask/Supabase, :5001) — ต้องมาก่อน '/api' เพื่อให้ match ก่อน
-      '/api/erp': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      // Node proxy (:5000) — /api/analyze และอื่น ๆ
+      // Node backend (:5000) — /api/analyze, /api/auth, /api/billing, /api/erp
+      // ERP material prices now live in the Node server (server/erp/), so all
+      // /api/* traffic goes to :5000. (No separate Flask service needed.)
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,

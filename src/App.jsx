@@ -11,6 +11,7 @@ import RegisterPage from './features/auth/RegisterPage'
 import ContractorDashboard from './pages/ContractorDashboard'
 import CustomerSummary from './pages/CustomerSummary'
 import HouseCatalog from './pages/HouseCatalog'
+import HousePlanDetail from './pages/HousePlanDetail'
 import MaterialPrices from './pages/MaterialPrices'
 import MultiProjectDashboard from './pages/MultiProjectDashboard'
 import ProjectDetail from './pages/ProjectDetail'
@@ -48,6 +49,14 @@ function App() {
                   element={
                     <RequireAuth>
                       <HouseCatalog />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/catalog/:id"
+                  element={
+                    <RequireAuth>
+                      <HousePlanDetail />
                     </RequireAuth>
                   }
                 />

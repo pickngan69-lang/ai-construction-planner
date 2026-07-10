@@ -39,3 +39,9 @@ export async function getBillingPayment(paymentId) {
   })
   return readJson(response)
 }
+export async function listBillingPayments() {
+  const response = await fetch('/api/billing/payments', {
+    headers: authHeaders(),
+  })
+  return readJson(response)
+}

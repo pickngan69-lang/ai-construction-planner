@@ -100,4 +100,25 @@ export async function deleteMarketPrice(id) {
   return res.json()
 }
 
+// ---- Reference prices (ราคากลางอ้างอิง จากกระทรวงพาณิชย์ / TPSO) ----
+
+// Province code→name list for the reference-price selector.
+export async function listReferenceProvinces({ signal } = {}) {
+  const res = await fetch(url('/api/erp/reference/provinces'), { signal })
+  if (!res.ok) throw new Error(`โหลดรายชื่อจังหวัดไม่สำเร็จ (HTTP ${res.status})`)
+  return res.json()
+}
+
+// Official reference prices for a province/period. Returns
+// { year, month, type, rows: [{ code, name, unit, price, priceVat }] }.
+// Omit year/month to use the latest available (server falls back a few months).
+export async function fetchReferencePrices({ type = 10, year, month, signal } = {}) {
+  const qs = new URLSearchParams({ type: String(type) })
+  if (year) qs.set('year', String(year))
+  if (month) qs.set('month', String(month))
+  const res = await fetch(url(`/api/erp/reference/prices?${qs.toString()}`), { signal })
+  if (!res.ok) throw new Error(`โหลดราคากลางไม่สำเร็จ (HTTP ${res.status})`)
+  return res.json()
+}
+
 export { LOCAL_INDEX, ERP_BASE }

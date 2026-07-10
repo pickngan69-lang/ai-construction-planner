@@ -4,6 +4,7 @@ import Header from '../components/Header'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import GuidePopup from '../components/GuidePopup'
+import ReferencePricePanel from '../components/ReferencePricePanel'
 import {
   checkErpHealth,
   listMarketPrices,
@@ -98,6 +99,40 @@ function MaterialPrices() {
       await deleteMarketPrice(row.id)
       setRows((prev) => prev.filter((r) => r.id !== row.id))
       setNotice({ type: 'ok', text: `ลบ "${row.material_name}" แล้ว` })
+    } catch (e) {
+      setNotice({ type: 'err', text: e.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // ชื่อวัสดุที่มีอยู่ในตารางแล้ว (ใช้แสดง ✓ ในแผงราคากลางอ้างอิง)
+  const importedNames = useMemo(
+    () => new Set(rows.map((r) => r.material_name)),
+    [rows],
+  )
+
+  // คัดลอกราคากลางอ้างอิง 1 รายการลงตารางของเรา (ซ้ำชื่อ → อัปเดตแถวเดิม)
+  const handleImportReference = async ({ material_name, current_price }) => {
+    setBusy(true)
+    setNotice(null)
+    try {
+      const existing = rows.find((r) => r.material_name === material_name)
+      const saved = await saveMarketPrice({
+        id: existing?.id,
+        material_name,
+        current_price,
+      })
+      setRows((prev) => {
+        const idx = prev.findIndex(
+          (r) => r.id === saved.id || r.material_name === saved.material_name,
+        )
+        if (idx >= 0) {
+          return prev.map((r, i) => (i === idx ? { ...saved, _dirty: false } : r))
+        }
+        return [{ ...saved, _dirty: false }, ...prev]
+      })
+      setNotice({ type: 'ok', text: `เพิ่ม "${saved.material_name}" จากราคากลางแล้ว` })
     } catch (e) {
       setNotice({ type: 'err', text: e.message })
     } finally {
@@ -204,6 +239,12 @@ function MaterialPrices() {
 
         {status === 'ready' && (
           <>
+            {/* ราคากลางอ้างอิงจากกระทรวงพาณิชย์ (สนค.) */}
+            <ReferencePricePanel
+              onImport={handleImportReference}
+              importedNames={importedNames}
+            />
+
             {/* เพิ่มรายการใหม่ */}
             <Card className="p-4">
               <p className="text-sm font-medium text-ink mb-3">➕ เพิ่มราคาวัสดุ/แบรนด์</p>

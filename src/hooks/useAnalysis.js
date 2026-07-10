@@ -179,6 +179,12 @@ export function useAnalysis() {
     persisted?.deletedTaskIds || [],
   )
 
+  // โปรเจกต์ที่ผลวิเคราะห์ปัจจุบันผูกอยู่ (ถ้ามี) — ตั้งตอนกด "ทำต่อ" จากโปรเจกต์
+  // หรือหลังบันทึกครั้งแรก ทำให้บันทึกครั้งถัดไป "อัปเดต" โปรเจกต์เดิม ไม่สร้างซ้ำ
+  const [activeProjectId, setActiveProjectId] = useState(
+    persisted?.activeProjectId || null,
+  )
+
   useEffect(() => {
     if (result) {
       savePersisted({
@@ -189,6 +195,7 @@ export function useAnalysis() {
         materialLaborByGrade,
         addedTasks,
         deletedTaskIds,
+        activeProjectId,
       })
     }
   }, [
@@ -199,6 +206,7 @@ export function useAnalysis() {
     materialLaborByGrade,
     addedTasks,
     deletedTaskIds,
+    activeProjectId,
   ])
 
   const run = useCallback(async (images, projectInfo, { mock = false } = {}) => {
@@ -256,6 +264,7 @@ export function useAnalysis() {
     setMaterialLaborByGradeState({ ...EMPTY_MATERIAL_LABOR })
     setAddedTasks([])
     setDeletedTaskIds([])
+    setActiveProjectId(null)
     setError(null)
     savePersisted(null)
   }, [])
@@ -427,6 +436,8 @@ export function useAnalysis() {
     run,
     reset,
     loadSnapshot,
+    activeProjectId,
+    setActiveProjectId,
     setMode,
     updateTask,
     clearEdits,

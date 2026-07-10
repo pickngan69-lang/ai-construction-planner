@@ -18,15 +18,19 @@ function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100
 }
 
-export function calculateVat(subtotal) {
+export function calculateReceiptTotal(subtotal) {
   const base = roundMoney(subtotal)
   const vatAmount = roundMoney(base * VAT_RATE)
   return {
     subtotal: base,
     vatAmount,
     totalAmount: roundMoney(base + vatAmount),
+    vatRate: VAT_RATE,
+    receiptType: 'tax_invoice',
   }
 }
+
+export const calculateVat = calculateReceiptTotal
 
 export const SUBSCRIPTION_PLANS = [
   {
@@ -143,5 +147,5 @@ export function getPlanByCode(code) {
 export function getPlanPriceBreakdown(code) {
   const plan = getPlanByCode(code)
   if (!plan) return null
-  return { ...plan, ...calculateVat(plan.price) }
+  return { ...plan, ...calculateReceiptTotal(plan.price) }
 }

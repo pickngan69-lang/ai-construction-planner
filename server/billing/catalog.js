@@ -82,6 +82,7 @@ export function withVat(plan) {
     subtotal,
     vatAmount,
     totalAmount: roundMoney(subtotal + vatAmount),
+    receiptType: 'tax_invoice',
   }
 }
 

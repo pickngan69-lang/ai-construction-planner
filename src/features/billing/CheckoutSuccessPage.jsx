@@ -23,6 +23,10 @@ function paymentStatusText(status) {
   return 'รอการชำระเงิน'
 }
 
+function money(value) {
+  return `${Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท`
+}
+
 function CheckoutSuccessPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -93,6 +97,9 @@ function CheckoutSuccessPage() {
   const isTrial = plan.code === PLAN_CODES.TRIAL
   const isPaid = isTrial || payment?.status === 'paid'
   const status = isTrial ? 'trialing' : payment?.status
+  const subtotal = payment?.subtotal ?? plan.subtotal
+  const vatAmount = payment?.vatAmount ?? plan.vatAmount
+  const totalAmount = payment?.totalAmount ?? plan.totalAmount
 
   return (
     <main className="min-h-screen bg-canvas px-4 py-10">
@@ -108,7 +115,7 @@ function CheckoutSuccessPage() {
             </h1>
             <p className="mt-2 text-sm text-ink-soft">
               {isPaid
-                ? 'ระบบบันทึกแพ็กเกจและเครดิต AI ให้บัญชีสมาชิกแล้ว'
+                ? 'ระบบบันทึกแพ็กเกจและเครดิต AI ให้บัญชีสมาชิกแล้ว และจะออกเอกสารเป็นใบเสร็จรับเงิน/ใบกำกับภาษี'
                 : 'ถ้าชำระผ่าน Opn/Omise แล้ว ให้รอสักครู่หรือกดตรวจสอบสถานะอีกครั้ง'}
             </p>
           </div>
@@ -146,16 +153,20 @@ function CheckoutSuccessPage() {
               <>
                 <div className="mt-2 flex items-center justify-between gap-4">
                   <span className="text-sm text-ink-soft">ราคาก่อน VAT</span>
-                  <span className="font-mono text-ink">{plan.subtotal.toLocaleString()} บาท</span>
+                  <span className="font-mono text-ink">{money(subtotal)}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-4">
                   <span className="text-sm text-ink-soft">VAT 7%</span>
-                  <span className="font-mono text-ink">{plan.vatAmount.toLocaleString()} บาท</span>
+                  <span className="font-mono text-ink">{money(vatAmount)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-4">
+                  <span className="text-sm text-ink-soft">เอกสาร</span>
+                  <span className="text-sm font-medium text-ink">ใบเสร็จรับเงิน/ใบกำกับภาษี</span>
                 </div>
                 <div className="mt-3 border-t border-line pt-3 flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium text-ink">ยอดชำระ</span>
+                  <span className="text-sm font-medium text-ink">ยอดชำระรวม</span>
                   <span className="font-mono text-lg font-semibold text-accent">
-                    {plan.totalAmount.toLocaleString()} บาท
+                    {money(totalAmount)}
                   </span>
                 </div>
               </>

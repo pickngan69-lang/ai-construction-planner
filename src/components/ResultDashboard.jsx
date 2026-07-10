@@ -129,9 +129,11 @@ function ResultDashboard({
     deletedTaskIds,
     addTask,
     deleteTask,
+    activeProjectId,
+    setActiveProjectId,
   } = useAnalysisContext()
   const navigate = useNavigate()
-  const { addProject } = useProjects()
+  const { addProject, updateProject, getProject } = useProjects()
 
   // Hoist InteractiveGantt's tasks state so it survives tab switches
   const [ganttTasks, setGanttTasks] = useState(() =>
@@ -403,45 +405,59 @@ function ResultDashboard({
   const [showSaveModal, setShowSaveModal] = useState(false)
 
   // มัดรวมข้อมูลลูกค้า (จาก modal) + ข้อมูล AI (ชื่อ/งบ/รูป/BOQ) → บันทึกเข้ากระดาน
+  // ถ้ากำลังทำงานบนโปรเจกต์เดิม (activeProjectId) → "อัปเดต" โปรเจกต์นั้น (เก็บสถานะ/
+  // ค่างวด/ต้นทุนจริงเดิมไว้) มิฉะนั้นจึงสร้างโปรเจกต์ใหม่แล้วผูก id ไว้เป็น active
   const handleConfirmSave = (customer) => {
     const houseInfo = adjustedResult.house_analysis || {}
     const budget = Number(projectInfo.budget) || Math.round(totalCost)
     const cover = images?.find((f) => f.kind === 'image' && (f.url || f.preview))
-    addProject({
-      id: `PJ-${Date.now().toString(36)}`,
+    // snapshot ผลวิเคราะห์ล่าสุด (รวมการแก้ไข) — ใช้ resume ตอนกด "ทำต่อ"
+    const analysis = {
+      projectInfo,
+      snapshot: {
+        result,
+        edits,
+        materialEdits,
+        materialLaborByGrade,
+        addedTasks,
+        deletedTaskIds,
+      },
+    }
+    // ฟิลด์ที่แก้ได้จากผลวิเคราะห์ (ไม่แตะสถานะ/การเงินของโปรเจกต์เดิมตอนอัปเดต)
+    const editableFields = {
       name: projectInfo.name?.trim() || houseInfo.type || 'โปรเจกต์ใหม่',
       customerName: customer.customerName,
       client: customer.customerName, // backward-compat กับโค้ดเดิมที่อ่าน .client
       contact: customer.contact,
       location: customer.location,
       startDate: customer.startDate,
-      status: 'estimating',
       area: Number(projectInfo.area) || houseInfo.estimated_size_sqm || 0,
       floors: Number(projectInfo.floors) || houseInfo.floors || 1,
       beds: Number(projectInfo.bedrooms) || 0,
       baths: Number(projectInfo.bathrooms) || 0,
       style: projectInfo.style || houseInfo.style || '-',
       boqBudget: budget,
-      actualCost: 0,
-      progress: 0,
-      installmentPaid: 0,
-      installmentTotal: budget,
-      installments: DEFAULT_INSTALLMENTS.map((i) => ({ ...i })),
       imageUrl: cover?.url || cover?.preview || null,
-      createdAt: Date.now(),
-      // เก็บ snapshot ผลวิเคราะห์ไว้กับโปรเจกต์ เพื่อเปิดกลับมาดูภายหลังได้
-      analysis: {
-        projectInfo,
-        snapshot: {
-          result,
-          edits,
-          materialEdits,
-          materialLaborByGrade,
-          addedTasks,
-          deletedTaskIds,
-        },
-      },
-    })
+      analysis,
+    }
+
+    if (activeProjectId) {
+      updateProject(activeProjectId, editableFields)
+    } else {
+      const id = `PJ-${Date.now().toString(36)}`
+      addProject({
+        id,
+        ...editableFields,
+        status: 'estimating',
+        actualCost: 0,
+        progress: 0,
+        installmentPaid: 0,
+        installmentTotal: budget,
+        installments: DEFAULT_INSTALLMENTS.map((i) => ({ ...i })),
+        createdAt: Date.now(),
+      })
+      setActiveProjectId(id) // บันทึกครั้งถัดไปจะอัปเดตโปรเจกต์นี้ ไม่สร้างซ้ำ
+    }
     setShowSaveModal(false)
     navigate('/projects')
   }
@@ -539,7 +555,7 @@ function ResultDashboard({
           onClick={() => setShowSaveModal(true)}
           className="px-4 py-2 rounded-md bg-accent text-canvas text-sm font-medium hover:bg-accent-soft transition-colors"
         >
-          💾 บันทึกเข้ากระดานโปรเจกต์
+          {activeProjectId ? '💾 อัปเดตโปรเจกต์นี้' : '💾 บันทึกเข้ากระดานโปรเจกต์'}
         </button>
       </div>
 
@@ -638,6 +654,7 @@ function ResultDashboard({
 
       {showSaveModal && (
         <SaveProjectModal
+          initial={activeProjectId ? getProject(activeProjectId) : undefined}
           defaultLocation={projectInfo.province || ''}
           onConfirm={handleConfirmSave}
           onClose={() => setShowSaveModal(false)}
