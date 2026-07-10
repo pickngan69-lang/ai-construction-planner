@@ -15,6 +15,10 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        // AI analysis of large/multi-page PDFs can take a couple of minutes —
+        // don't let the dev proxy cut the connection (→ empty response).
+        timeout: 600000,
+        proxyTimeout: 600000,
       },
     },
   },
