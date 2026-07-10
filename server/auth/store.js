@@ -184,3 +184,38 @@ export async function logoutToken(token) {
   store.sessions = (store.sessions || []).filter((item) => item.token !== token)
   await saveStore(store)
 }
+
+// Seed a default admin account on server start. The file store is ephemeral on
+// Render (wiped every deploy), so we recreate this account on every boot from
+// env vars — set DEFAULT_ADMIN_EMAIL / DEFAULT_ADMIN_PASSWORD in the Render
+// dashboard so the login persists with YOUR chosen credentials across deploys.
+export async function ensureDefaultUser() {
+  const email = normalizeEmail(
+    process.env.DEFAULT_ADMIN_EMAIL || 'nhanswat869@gmail.com',
+  )
+  const password = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin1234!'
+  if (!email || password.length < 8) return { created: false, email }
+
+  const store = await ensureStore()
+  if (store.users.some((item) => item.email === email)) {
+    return { created: false, email }
+  }
+
+  const now = Date.now()
+  store.users.push({
+    id: `usr_${now}_${randomBytes(4).toString('hex')}`,
+    name: 'ผู้ดูแลระบบ',
+    email,
+    companyName: '',
+    passwordHash: await hashPassword(password),
+    planCode: 'pro_yearly', // ให้แอดมินใช้งานได้เต็ม ไม่ติดลิมิตทดลอง
+    status: 'active',
+    aiCredits: 9999,
+    projectsUsed: 0,
+    subscriptionEndsAt: now + 365 * 24 * 60 * 60 * 1000,
+    createdAt: now,
+    updatedAt: now,
+  })
+  await saveStore(store)
+  return { created: true, email }
+}

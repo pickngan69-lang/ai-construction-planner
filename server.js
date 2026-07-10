@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 import authRouter from './server/auth/routes.js'
 import billingRouter from './server/billing/routes.js'
 import erpRouter from './server/erp/routes.js'
+import { ensureDefaultUser } from './server/auth/store.js'
 
 dotenv.config()
 const localEnv = dotenv.config({ path: '.env.local' })
@@ -79,4 +80,11 @@ app.get(/.*/, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
+  // Ephemeral store on Render → recreate the default admin on every boot.
+  ensureDefaultUser()
+    .then((r) => {
+      if (r.created) console.log(`[auth] ✅ seeded default admin: ${r.email}`)
+      else console.log(`[auth] default admin already present: ${r.email}`)
+    })
+    .catch((err) => console.error('[auth] default-admin seed failed:', err?.message))
 })
