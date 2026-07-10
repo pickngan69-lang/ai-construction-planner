@@ -181,19 +181,23 @@ export async function analyzeHouse(files, projectInfo) {
     }),
   })
 
+  // อ่าน body ครั้งเดียว (อ่านซ้ำไม่ได้) แล้วค่อยแยกเคส เพื่อ diagnose ได้จริง
+  const rawBody = await response.text().catch(() => '')
+
   if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`API error ${response.status}: ${errText.slice(0, 300)}`)
+    throw new Error(`API error ${response.status}: ${rawBody.slice(0, 300)}`)
   }
 
   let data
   try {
-    data = await response.json()
+    data = JSON.parse(rawBody)
   } catch {
-    // 2xx แต่ body ว่าง/ไม่ครบ → มักเป็น timeout เพราะไฟล์ใหญ่/หลายหน้า
+    // 2xx แต่ body ว่าง/ไม่ใช่ JSON → คำขอถูกตัดกลางทาง (proxy/แพลตฟอร์มหมดเวลา)
     throw new Error(
-      'เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์ (อาจหมดเวลาเพราะไฟล์ใหญ่/หลายหน้า) — ' +
-        'ลองแนบเฉพาะหน้าที่จำเป็น ย่อขนาด PDF หรือใช้รูปแปลนแทน แล้ววิเคราะห์ใหม่',
+      rawBody
+        ? `เซิร์ฟเวอร์ตอบไม่ใช่ JSON (status ${response.status}, ${rawBody.length} bytes): ${rawBody.slice(0, 200)}`
+        : `เซิร์ฟเวอร์ตอบกลับว่างเปล่า (status ${response.status}) — คำขอถูกตัดกลางทางระหว่างประมวลผล ` +
+            '(proxy/แพลตฟอร์มหมดเวลา) ถ้ารันในเครื่องให้รีสตาร์ท npm run dev',
     )
   }
   if (data.error) throw new Error(data.error.message || 'AI returned an error')
@@ -204,9 +208,6 @@ export async function analyzeHouse(files, projectInfo) {
   try {
     return repairJSON(textBlock.text)
   } catch {
-    // คำตอบ AI ถูกตัดกลางคัน (มักเพราะข้อมูลเข้าเยอะจนผลลัพธ์ยาวเกิน max_tokens)
-    throw new Error(
-      'AI ตอบกลับไม่ครบ (JSON ถูกตัดกลางคัน) — ลองวิเคราะห์ใหม่ หรือลดจำนวนหน้า/รายละเอียดที่แนบ',
-    )
+    throw new Error('AI ตอบกลับไม่ครบ (JSON ถูกตัดกลางคัน) — ลองวิเคราะห์ใหม่')
   }
 }

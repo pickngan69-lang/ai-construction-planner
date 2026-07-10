@@ -38,6 +38,11 @@ app.post('/api/analyze', async (req, res) => {
       error: { message: 'ANTHROPIC_API_KEY is not configured on the server' },
     })
   }
+  const t0 = Date.now()
+  const bodyStr = JSON.stringify(req.body)
+  console.log(
+    `[analyze] ➡️  ${(Buffer.byteLength(bodyStr) / 1024 / 1024).toFixed(2)} MB`,
+  )
   try {
     const upstream = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
@@ -46,11 +51,17 @@ app.post('/api/analyze', async (req, res) => {
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify(req.body),
+      body: bodyStr,
     })
     const data = await upstream.json()
+    console.log(
+      `[analyze] ⬅️  upstream ${upstream.status} in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+    )
     res.status(upstream.status).json(data)
   } catch (err) {
+    console.error(
+      `[analyze] ❌ failed after ${((Date.now() - t0) / 1000).toFixed(1)}s: ${err?.message}`,
+    )
     res.status(502).json({
       error: { message: err?.message || 'Upstream request failed' },
     })
