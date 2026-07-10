@@ -33,5 +33,5 @@ services:
       # ตั้ง 2 ตัวนี้เพื่อ login ด้วยรหัสของคุณเอง (คงอยู่ถาวรข้าม deploy)
       - key: DEFAULT_ADMIN_EMAIL # ไม่ตั้ง = nhanswat869@gmail.com
         sync: false
-      - key: DEFAULT_ADMIN_PASSWORD # ไม่ตั้ง = Admin1234! (อย่างน้อย 8 ตัวอักษร)
+      - key: DEFAULT_ADMIN_PASSWORD # ไม่ตั้ง = test1234 (อย่างน้อย 8 ตัวอักษร)
         sync: false

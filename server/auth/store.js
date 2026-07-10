@@ -193,7 +193,7 @@ export async function ensureDefaultUser() {
   const email = normalizeEmail(
     process.env.DEFAULT_ADMIN_EMAIL || 'nhanswat869@gmail.com',
   )
-  const password = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin1234!'
+  const password = process.env.DEFAULT_ADMIN_PASSWORD || 'test1234'
   if (!email || password.length < 8) return { created: false, email }
 
   const store = await ensureStore()
