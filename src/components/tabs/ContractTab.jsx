@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import ContractForm from '../ContractForm'
 import ContractDocument from '../ContractDocument'
 import { exportCurrentSection } from '../../utils/exportPdf'
+import { useCompany } from '../../contexts/CompanyContext'
 
 /**
  * ContractTab — orchestrator: owns all contract state, composes
@@ -45,7 +46,9 @@ function ContractTab({ result, projectInfo }) {
   const [lateFinePercent, setLateFinePercent] = useState(0.01)
 
   // -------- ฟอร์มข้อมูลคู่สัญญา --------
-  const [form, setForm] = useState({
+  // ช่อง "ผู้รับจ้าง" กรอกให้อัตโนมัติจากข้อมูลบริษัท (ตั้งค่าที่ /settings)
+  const { company } = useCompany()
+  const [form, setForm] = useState(() => ({
     contractDate: new Date().toISOString().split('T')[0],
     location: projectInfo?.province || '',
     ownerName: '',
@@ -53,15 +56,15 @@ function ContractTab({ result, projectInfo }) {
     ownerPhone: '',
     ownerId: '',
     ownerAddress: '',
-    contractorName: '',
+    contractorName: company.name || '',
     contractorAge: '',
-    contractorPhone: '',
-    contractorId: '',
-    contractorRegistration: '',
-    contractorAddress: '',
+    contractorPhone: company.phone || '',
+    contractorId: company.taxId || '',
+    contractorRegistration: company.registrationNo || '',
+    contractorAddress: company.address || '',
     witness1: '',
     witness2: '',
-  })
+  }))
 
   // -------- งวดงาน --------
   const [installments, setInstallments] = useState([

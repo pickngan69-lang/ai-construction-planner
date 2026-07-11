@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AnalysisProvider } from './contexts/AnalysisContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { CompanyProvider } from './contexts/CompanyContext'
 import { ProjectProvider } from './contexts/ProjectContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import AccountBillingPage from './features/billing/AccountBillingPage'
@@ -8,6 +9,7 @@ import CheckoutSuccessPage from './features/billing/CheckoutSuccessPage'
 import PricingPage from './features/billing/PricingPage'
 import MemberLoginPage from './features/auth/MemberLoginPage'
 import RegisterPage from './features/auth/RegisterPage'
+import CompanySettings from './pages/CompanySettings'
 import ContractorDashboard from './pages/ContractorDashboard'
 import CustomerSummary from './pages/CustomerSummary'
 import HouseCatalog from './pages/HouseCatalog'
@@ -25,9 +27,10 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AnalysisProvider>
-          <ProjectProvider>
-            <BrowserRouter>
+        <CompanyProvider>
+          <AnalysisProvider>
+            <ProjectProvider>
+              <BrowserRouter>
               <Routes>
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -84,11 +87,20 @@ function App() {
                     </RequireAuth>
                   }
                 />
+                <Route
+                  path="/settings"
+                  element={
+                    <RequireAuth>
+                      <CompanySettings />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </BrowserRouter>
-          </ProjectProvider>
-        </AnalysisProvider>
+              </BrowserRouter>
+            </ProjectProvider>
+          </AnalysisProvider>
+        </CompanyProvider>
       </AuthProvider>
     </ThemeProvider>
   )

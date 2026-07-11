@@ -1,4 +1,5 @@
 import { formatBaht, numberToThaiText } from '../utils/formatters'
+import { useCompany } from '../contexts/CompanyContext'
 
 const longDateFmt = new Intl.DateTimeFormat('th-TH', {
   day: 'numeric',
@@ -64,9 +65,18 @@ function ContractDocument({
   totalMaterial,
   totalLabor,
 }) {
+  const { company } = useCompany()
   const houseInfo = result?.house_analysis || {}
   const projectName =
     projectInfo?.name?.trim() || houseInfo.type || 'แผนก่อสร้าง'
+
+  const companyContact = [
+    company.phone && `โทร. ${company.phone}`,
+    company.email,
+    company.taxId && `เลขผู้เสียภาษี ${company.taxId}`,
+  ]
+    .filter(Boolean)
+    .join('  ·  ')
 
   const contractNo = generateContractNo(form.contractDate)
   const startIso = addDaysIso(form.contractDate, daysToStart)
@@ -84,6 +94,38 @@ function ContractDocument({
       data-export-bare="true"
       className="contract-page shadow-md"
     >
+      {/* ============ หัวกระดาษบริษัท (ผู้รับเหมา) ============ */}
+      {company.name && (
+        <div
+          data-no-break
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            borderBottom: '2px solid #333',
+            paddingBottom: '8px',
+            marginBottom: '14px',
+          }}
+        >
+          {company.logo && (
+            <img
+              src={company.logo}
+              alt="logo"
+              style={{ height: '52px', width: 'auto', objectFit: 'contain' }}
+            />
+          )}
+          <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
+            <div style={{ fontWeight: 700, fontSize: '15px' }}>{company.name}</div>
+            {company.address && (
+              <div style={{ fontSize: '11px', color: '#555' }}>{company.address}</div>
+            )}
+            {companyContact && (
+              <div style={{ fontSize: '11px', color: '#555' }}>{companyContact}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ============ HEADER ============ */}
       <div data-no-break>
         <h1 className="contract-title">สัญญาจ้างเหมาก่อสร้างบ้าน</h1>
