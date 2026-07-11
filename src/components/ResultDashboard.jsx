@@ -13,6 +13,7 @@ import BOQTab from './tabs/BOQTab'
 import TaskDetailTab from './tabs/TaskDetailTab'
 import MaterialTab from './tabs/MaterialTab'
 import RecommendTab from './tabs/RecommendTab'
+import QuotationTab from './tabs/QuotationTab'
 import ContractTab from './tabs/ContractTab' // แทรกไฟล์สัญญาเข้ามาแล้ว
 import { useAnalysisContext } from '../contexts/AnalysisContext'
 import { useProjects } from '../contexts/ProjectContext'
@@ -57,6 +58,7 @@ const TAB_ITEMS = [
   { id: 'tasks', label: 'งาน', icon: '📋', exportName: 'Tasks' },
   { id: 'materials', label: 'วัสดุ', icon: '🧱', exportName: 'Materials' },
   { id: 'recommend', label: 'แนะนำ', icon: '💡', exportName: 'Recommendations' },
+  { id: 'quotation', label: 'ใบเสนอราคา', icon: '📄', exportName: 'Quotation' },
   { id: 'contract', label: 'สัญญา', icon: '📝', exportName: 'Contract' },
 ]
 
@@ -648,6 +650,10 @@ function ResultDashboard({
         )}
         {tab === 'recommend' && <RecommendTab result={adjustedResult} />}
         
+        {tab === 'quotation' && (
+          <QuotationTab result={adjustedResult} projectInfo={projectInfo} />
+        )}
+
         {/* ผูกหน้าสัญญาเข้ากับระบบ */}
         {tab === 'contract' && <ContractTab result={adjustedResult} projectInfo={projectInfo} />}
       </div>
