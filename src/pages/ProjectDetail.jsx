@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import Header from '../components/Header'
 import Card from '../components/ui/Card'
+import InvoiceModal from '../components/InvoiceModal'
 import { installmentAmount, STATUS_META } from '../data/mockProjects'
 import { useProjects } from '../contexts/ProjectContext'
 import { formatBaht, formatBahtCompact } from '../utils/formatters'
@@ -62,6 +63,7 @@ function ProjectDetail() {
   const { getProject } = useProjects()
   const project = getProject(id)
   const [copied, setCopied] = useState(false)
+  const [invoiceFor, setInvoiceFor] = useState(null)
 
   const magicLink = `${window.location.origin}/shared/${id}`
 
@@ -228,6 +230,13 @@ function ProjectDetail() {
                     <p className="text-xs" style={{ color: s.color }}>
                       {s.label}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceFor(inst)}
+                      className="mt-1 text-[11px] text-accent hover:underline"
+                    >
+                      🧾 ออกบิล/ใบเสร็จ
+                    </button>
                   </div>
                 </div>
               )
@@ -241,6 +250,14 @@ function ProjectDetail() {
           </div>
         </Card>
       </main>
+
+      {invoiceFor && (
+        <InvoiceModal
+          project={project}
+          installment={invoiceFor}
+          onClose={() => setInvoiceFor(null)}
+        />
+      )}
     </>
   )
 }
