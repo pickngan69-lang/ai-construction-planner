@@ -119,6 +119,44 @@ async function resolveImageSource(f) {
   return { type: 'base64', media_type: f.mediaType, data: f.base64 }
 }
 
+// Read an Anthropic SSE stream (text/event-stream) and return the concatenated
+// text output. Streaming keeps the connection alive during long analyses so
+// proxies/platforms don't cut it (fixes large-PDF timeouts).
+async function readAnthropicStream(body) {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let text = ''
+  let streamError = null
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let nl
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl).trim()
+      buffer = buffer.slice(nl + 1)
+      if (!line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (!payload || payload === '[DONE]') continue
+      let evt
+      try {
+        evt = JSON.parse(payload)
+      } catch {
+        continue
+      }
+      if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+        text += evt.delta.text
+      } else if (evt.type === 'error') {
+        streamError = evt.error?.message || 'AI stream error'
+      }
+    }
+  }
+  if (streamError) throw new Error(streamError)
+  return text
+}
+
 export async function analyzeHouse(files, projectInfo) {
   if (!files?.length) throw new Error('ต้องแนบไฟล์อย่างน้อย 1 ไฟล์')
 
@@ -178,35 +216,40 @@ export async function analyzeHouse(files, projectInfo) {
       max_tokens: ANTHROPIC_MAX_TOKENS,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content }],
+      stream: true, // สตรีมคำตอบ → connection ไม่ถูกตัดตอนวิเคราะห์ไฟล์ใหญ่
     }),
   })
 
-  // อ่าน body ครั้งเดียว (อ่านซ้ำไม่ได้) แล้วค่อยแยกเคส เพื่อ diagnose ได้จริง
-  const rawBody = await response.text().catch(() => '')
-
   if (!response.ok) {
-    throw new Error(`API error ${response.status}: ${rawBody.slice(0, 300)}`)
+    const errText = await response.text().catch(() => '')
+    throw new Error(`API error ${response.status}: ${errText.slice(0, 300)}`)
   }
 
-  let data
-  try {
-    data = JSON.parse(rawBody)
-  } catch {
-    // 2xx แต่ body ว่าง/ไม่ใช่ JSON → คำขอถูกตัดกลางทาง (proxy/แพลตฟอร์มหมดเวลา)
-    throw new Error(
-      rawBody
-        ? `เซิร์ฟเวอร์ตอบไม่ใช่ JSON (status ${response.status}, ${rawBody.length} bytes): ${rawBody.slice(0, 200)}`
-        : `เซิร์ฟเวอร์ตอบกลับว่างเปล่า (status ${response.status}) — คำขอถูกตัดกลางทางระหว่างประมวลผล ` +
-            '(proxy/แพลตฟอร์มหมดเวลา) ถ้ารันในเครื่องให้รีสตาร์ท npm run dev',
-    )
+  // Streaming response (SSE) → อ่านทีละ chunk สะสมเป็นข้อความ
+  // เผื่อ server ไม่รองรับ stream → fallback อ่านเป็น JSON ก้อนเดียว
+  const contentType = response.headers.get('content-type') || ''
+  let text
+  if (contentType.includes('text/event-stream') && response.body) {
+    text = await readAnthropicStream(response.body)
+  } else {
+    const rawBody = await response.text().catch(() => '')
+    let data
+    try {
+      data = JSON.parse(rawBody)
+    } catch {
+      throw new Error(
+        rawBody
+          ? `เซิร์ฟเวอร์ตอบไม่ใช่ JSON (status ${response.status}, ${rawBody.length} bytes): ${rawBody.slice(0, 200)}`
+          : `เซิร์ฟเวอร์ตอบกลับว่างเปล่า (status ${response.status}) — คำขอถูกตัดกลางทาง`,
+      )
+    }
+    if (data.error) throw new Error(data.error.message || 'AI returned an error')
+    text = (data.content || []).find((b) => b.type === 'text')?.text || ''
   }
-  if (data.error) throw new Error(data.error.message || 'AI returned an error')
 
-  const textBlock = (data.content || []).find((b) => b.type === 'text')
-  if (!textBlock?.text) throw new Error('AI ไม่ได้ส่งข้อความตอบกลับ')
-
+  if (!text) throw new Error('AI ไม่ได้ส่งข้อความตอบกลับ')
   try {
-    return repairJSON(textBlock.text)
+    return repairJSON(text)
   } catch {
     throw new Error('AI ตอบกลับไม่ครบ (JSON ถูกตัดกลางคัน) — ลองวิเคราะห์ใหม่')
   }

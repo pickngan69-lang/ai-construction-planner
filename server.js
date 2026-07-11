@@ -6,6 +6,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { Readable } from 'node:stream'
 import authRouter from './server/auth/routes.js'
 import billingRouter from './server/billing/routes.js'
 import erpRouter from './server/erp/routes.js'
@@ -40,9 +41,10 @@ app.post('/api/analyze', async (req, res) => {
     })
   }
   const t0 = Date.now()
+  const streaming = req.body?.stream === true
   const bodyStr = JSON.stringify(req.body)
   console.log(
-    `[analyze] ➡️  ${(Buffer.byteLength(bodyStr) / 1024 / 1024).toFixed(2)} MB`,
+    `[analyze] ➡️  ${(Buffer.byteLength(bodyStr) / 1024 / 1024).toFixed(2)} MB${streaming ? ' (stream)' : ''}`,
   )
   try {
     const upstream = await fetch(ANTHROPIC_API_URL, {
@@ -54,6 +56,30 @@ app.post('/api/analyze', async (req, res) => {
       },
       body: bodyStr,
     })
+
+    // Streaming success → pipe the SSE straight through. Bytes flow continuously,
+    // so proxies/platforms don't cut the connection during a long PDF analysis.
+    if (streaming && upstream.ok && upstream.body) {
+      res.status(upstream.status)
+      res.setHeader(
+        'Content-Type',
+        upstream.headers.get('content-type') || 'text/event-stream',
+      )
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.setHeader('X-Accel-Buffering', 'no') // don't let a proxy buffer the stream
+      if (typeof res.flushHeaders === 'function') res.flushHeaders()
+      res.on('close', () =>
+        console.log(
+          `[analyze] ⬅️  stream closed in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+        ),
+      )
+      Readable.fromWeb(upstream.body).pipe(res)
+      return
+    }
+
+    // non-streaming, or an upstream error (Anthropic returns JSON even for
+    // stream:true errors) → forward the JSON body as before
     const data = await upstream.json()
     console.log(
       `[analyze] ⬅️  upstream ${upstream.status} in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
@@ -63,9 +89,11 @@ app.post('/api/analyze', async (req, res) => {
     console.error(
       `[analyze] ❌ failed after ${((Date.now() - t0) / 1000).toFixed(1)}s: ${err?.message}`,
     )
-    res.status(502).json({
-      error: { message: err?.message || 'Upstream request failed' },
-    })
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: { message: err?.message || 'Upstream request failed' },
+      })
+    }
   }
 })
 
