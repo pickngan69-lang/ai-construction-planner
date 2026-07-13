@@ -81,7 +81,10 @@ function BOQTab({ result, gradeMultiplier, gradeId, isManual, onUpdateTask, onEd
               <tr className="bg-elevated/60 text-ink-soft text-xs uppercase tracking-wide">
                 <th className="text-left px-4 py-3 font-medium">รายการ</th>
                 <th className="text-right px-3 py-3 font-medium w-20">จำนวน</th>
-                <th className="text-left px-3 py-3 font-medium w-20">หน่วย</th>
+                <th className="text-left px-3 py-3 font-medium w-16">หน่วย</th>
+                <th className="text-right px-3 py-3 font-medium w-28">
+                  ราคา/หน่วย
+                </th>
                 <th className="text-right px-3 py-3 font-medium w-36">
                   ค่าวัสดุ
                 </th>
@@ -108,7 +111,7 @@ function BOQTab({ result, gradeMultiplier, gradeId, isManual, onUpdateTask, onEd
             </tbody>
             <tfoot>
               <tr className="bg-accent/10 border-t-2 border-accent/30 font-semibold">
-                <td className="px-4 py-3 text-ink" colSpan={3}>
+                <td className="px-4 py-3 text-ink" colSpan={4}>
                   💰 รวมทั้งหมด
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-ink">
@@ -142,7 +145,7 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
   return (
     <>
       <tr style={{ backgroundColor: `${row.color}11` }}>
-        <td className="px-4 py-2.5 text-ink font-semibold" colSpan={8}>
+        <td className="px-4 py-2.5 text-ink font-semibold" colSpan={9}>
           <span
             className="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle"
             style={{ backgroundColor: row.color }}
@@ -164,7 +167,7 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
       
       {/* เพิ่มแถวสำหรับปุ่ม "+ เพิ่มรายการ" ของแต่ละเฟส (ซ่อนตอน export/print) */}
       <tr className="border-t border-line/20 hover:bg-elevated/20 transition-colors no-print">
-        <td className="px-4 py-2 pl-10" colSpan={8}>
+        <td className="px-4 py-2 pl-10" colSpan={9}>
           <button
             onClick={handleAddClick}
             className="text-xs font-medium text-accent hover:text-accent/80 flex items-center gap-1.5 px-3 py-1.5 rounded border border-dashed border-accent/40 hover:border-accent transition-colors"
@@ -175,7 +178,7 @@ function PhaseRows({ row, isManual, onUpdateTask, onEditTask, onDeleteTask, onAd
       </tr>
 
       <tr className="border-t border-line bg-elevated/30 text-ink-soft font-medium phase-total">
-        <td className="px-4 py-2 pl-10" colSpan={3}>
+        <td className="px-4 py-2 pl-10" colSpan={4}>
           รวมเฟส {row.idx + 1}
         </td>
         <td className="px-3 py-2 text-right font-mono">
@@ -268,6 +271,11 @@ function TaskRow({ task, isManual, onUpdateTask, onEditTask, onDeleteTask }) {
         {task.quantity ? formatNumber(task.quantity) : '-'}
       </td>
       <td className="px-3 py-2 text-ink-muted">{task.unit || '-'}</td>
+      <td className="px-3 py-2 text-right font-mono text-ink-muted">
+        {task.quantity
+          ? formatBaht(Math.round(total / task.quantity))
+          : '-'}
+      </td>
       <td className="px-3 py-2 text-right">
         <EditableCost
           value={task.material_cost_adjusted || 0}

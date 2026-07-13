@@ -383,6 +383,38 @@ function tierList(grade) {
 // Build a full mock analysis payload shaped exactly like analyzeHouse()'s
 // return value. house_analysis is adapted from the entered projectInfo so the
 // test result still reflects what the user typed.
+// ปริมาณงาน/หน่วย จำลองต่องาน (ให้ BOQ โหมดทดสอบมีคอลัมน์ ปริมาณ × ราคา/หน่วย)
+const MOCK_QTY = {
+  'เคลียร์พื้นที่และปรับระดับดิน': [200, 'ตร.ม.'],
+  'วางผังและกำหนดหมุดอ้างอิง': [1, 'งาน'],
+  'ทำรั้วชั่วคราว + ห้องน้ำคนงาน': [1, 'งาน'],
+  งานเสาเข็ม: [30, 'ต้น'],
+  'งานฐานราก + คานคอดิน': [45, 'ลบ.ม.'],
+  'งานเสา-คาน-พื้น คสล.': [85, 'ลบ.ม.'],
+  'งานบันได คสล.': [1, 'ชุด'],
+  งานก่ออิฐผนัง: [420, 'ตร.ม.'],
+  งานฉาบปูน: [840, 'ตร.ม.'],
+  'ติดตั้งวงกบ ประตู-หน้าต่าง': [25, 'ชุด'],
+  งานมุงหลังคา: [180, 'ตร.ม.'],
+  งานระบบไฟฟ้า: [60, 'จุด'],
+  'งานระบบประปา-สุขาภิบาล': [25, 'จุด'],
+  ติดตั้งสุขภัณฑ์: [2, 'ชุด'],
+  'ปูกระเบื้องพื้น-ผนัง': [320, 'ตร.ม.'],
+  งานฝ้าเพดาน: [200, 'ตร.ม.'],
+  งานทาสี: [900, 'ตร.ม.'],
+  'เก็บงาน + ทำความสะอาด': [1, 'งาน'],
+}
+
+function withQty(phases) {
+  return phases.map((ph) => ({
+    ...ph,
+    tasks: (ph.tasks || []).map((t) => {
+      const q = MOCK_QTY[t.name]
+      return q ? { ...t, quantity: q[0], unit: q[1] } : t
+    }),
+  }))
+}
+
 export function buildMockAnalysis(projectInfo = {}) {
   return {
     house_analysis: {
@@ -394,7 +426,7 @@ export function buildMockAnalysis(projectInfo = {}) {
         projectInfo.notes ||
         'ข้อมูลจำลองสำหรับทดสอบ UI — ไม่ได้เรียก AI จริง ไม่มีค่าใช้จ่าย',
     },
-    phases: PHASES,
+    phases: withQty(PHASES),
     recommendations: RECOMMENDATIONS,
     risks: RISKS,
     permits: PERMITS,
