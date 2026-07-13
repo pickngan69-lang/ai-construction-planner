@@ -1,0 +1,148 @@
+-- ============================================================================
+-- AI Construction Planner — Supabase / Postgres schema (ครบทั้งโปรเจกต์)
+-- วิธีใช้: Supabase Dashboard → SQL Editor → New query → วางทั้งหมดนี้ → Run
+-- ============================================================================
+
+-- ⚠️ ล้างตารางของแอปก่อน — กันชนกับตารางเดิมที่ชนิด id ไม่ตรง (เช่น bigint จาก
+--    การรันครั้งก่อน) ปลอดภัยเพราะเป็นการ setup ครั้งแรก ยังไม่มีข้อมูลจริง
+--    (ตารางแอปทั้งหมดใช้ id เป็น text: usr_..., PJ-...)
+drop table if exists app_sessions, app_projects, app_company_profiles, app_users,
+  material_market_prices cascade;
+
+-- ─────────────────────────────────────────────────────────────
+-- 1) สมาชิก (auth) — แทน server/.data/auth.json
+-- ─────────────────────────────────────────────────────────────
+create table if not exists app_users (
+  id                   text primary key,
+  name                 text not null,
+  email                text unique not null,
+  company_name         text default '',
+  password_hash        text not null,
+  plan_code            text default 'trial',
+  status               text default 'trialing',
+  ai_credits           integer default 3,
+  projects_used        integer default 0,
+  trial_ends_at        bigint,
+  subscription_ends_at bigint,
+  last_payment_at      bigint,
+  last_payment_id      text,
+  created_at           bigint,
+  updated_at           bigint
+);
+
+create table if not exists app_sessions (
+  token       text primary key,
+  user_id     text references app_users(id) on delete cascade,
+  created_at  bigint,
+  expires_at  bigint
+);
+create index if not exists idx_app_sessions_user on app_sessions(user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- 2) ข้อมูลบริษัท/ผู้รับเหมา (หัวกระดาษเอกสาร) — แทน localStorage 'acp-company'
+-- ─────────────────────────────────────────────────────────────
+create table if not exists app_company_profiles (
+  user_id         text primary key references app_users(id) on delete cascade,
+  name            text default '',
+  logo            text default '',
+  tax_id          text default '',
+  registration_no text default '',
+  address         text default '',
+  phone           text default '',
+  email           text default '',
+  website         text default '',
+  updated_at      bigint
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- 3) โปรเจกต์ + ผลวิเคราะห์ (เก็บทั้งก้อนเป็น JSONB) — แทน localStorage 'acp-projects'
+-- ─────────────────────────────────────────────────────────────
+create table if not exists app_projects (
+  id          text primary key,
+  user_id     text references app_users(id) on delete cascade,
+  data        jsonb not null,
+  created_at  bigint,
+  updated_at  bigint
+);
+create index if not exists idx_app_projects_user on app_projects(user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- 4) ราคากลางวัสดุ (ตลาด) — แทน server/.data/erp-materials.json
+-- ─────────────────────────────────────────────────────────────
+create table if not exists material_market_prices (
+  id            serial primary key,
+  material_name text not null,
+  current_price numeric(12,2) default 0,
+  last_updated  timestamptz default now()
+);
+create unique index if not exists uq_material_name on material_market_prices(material_name);
+
+-- seed ราคาตั้งต้น 57 แบรนด์ (รันซ้ำได้ — ข้ามรายการที่มีแล้ว)
+insert into material_market_prices (material_name, current_price)
+select v.name, v.price from (values
+  ('ตราเสือ 50 กก.', 165),
+  ('SCG 50 กก.', 185),
+  ('อินทรี Insee Super 50 กก.', 205),
+  ('เหล็ก มอก. ทั่วไป 12 มม. ยาว 10 ม.', 230),
+  ('SYS/TATA 12 มม. ยาว 10 ม.', 255),
+  ('TATA Tiscon มอก. 12 มม. ยาว 10 ม.', 280),
+  ('เหล็กกลม 6 มม. ทั่วไป', 95),
+  ('เหล็กกลม 6 มม. มอก.', 110),
+  ('เหล็กกลม 6 มม. มอก. เกรดส่งออก', 125),
+  ('ทรายหยาบคัดทั่วไป', 380),
+  ('ทรายหยาบล้างสะอาด', 420),
+  ('ทรายหยาบล้างคัดพิเศษ', 460),
+  ('หินคลุก/หินย่อยทั่วไป', 480),
+  ('หิน 3/4 ล้าง', 520),
+  ('หิน 3/4 ล้างคัดพิเศษ', 560),
+  ('ไม้แบบใช้ซ้ำ', 95),
+  ('ไม้อัดเคลือบ', 130),
+  ('ไม้อัดฟิล์มดำ', 180),
+  ('เสาเข็ม I-22 ยาว 6 ม.', 850),
+  ('เสาเข็ม I-22 ยาว 9 ม.', 1100),
+  ('เสาเข็ม I-22 ยาว 12 ม. มอก.', 1400),
+  ('อิฐมอญแดง', 240),
+  ('อิฐมวลเบา Q-CON หนา 7.5 ซม.', 320),
+  ('อิฐมวลเบา Superblock หนา 10 ซม.', 380),
+  ('ปูนก่อ-ฉาบทั่วไป 50 กก.', 95),
+  ('เสือ มอร์ตาร์ 50 กก.', 115),
+  ('จระเข้/TPI พรีเมียม 50 กก.', 135),
+  ('ลอนคู่/ซีแพคทั่วไป', 220),
+  ('SCG คอนกรีตรุ่นมาตรฐาน', 320),
+  ('SCG เซรามิก Excella', 480),
+  ('เหล็กกล่องทั่วไป', 280),
+  ('เหล็กกล่องชุบกัลวาไนซ์', 360),
+  ('สมาร์ททรัส/กัลวาไนซ์หนาพิเศษ', 450),
+  ('แผ่นโฟม PE สะท้อนความร้อน', 60),
+  ('ใยแก้ว Stay Cool', 95),
+  ('SCG Cool Sheet / Aerolite', 140),
+  ('เซรามิก Campana 60x60', 220),
+  ('Cotto/Sosuco 60x60', 350),
+  ('แกรนิตโต้ Duragres 60x60', 650),
+  ('Jotun Essence', 38),
+  ('TOA SuperShield', 60),
+  ('Beger Premium / Dulux Weathershield', 95),
+  ('ยิปซัมธรรมดา + โครง C-line', 160),
+  ('ยิปรอค + โครงเคลือบสังกะสี', 220),
+  ('ยิปรอคกันชื้น/กันร้อน', 300),
+  ('บานเลื่อนอลูมิเนียมทั่วไป', 3200),
+  ('อลูมิเนียมสี + กระจกเขียวตัดแสง', 4800),
+  ('UPVC + กระจก Low-E', 7500),
+  ('สายไฟ มอก. + ปลั๊ก Panasonic', 320),
+  ('Bangkok Cable + Schneider', 420),
+  ('Phelps Dodge + Schneider พรีเมียม', 560),
+  ('ท่อ PVC ทั่วไป', 850),
+  ('ท่อ SCG ชั้น 8.5', 1100),
+  ('ท่อ SCG + วาล์วทองเหลือง', 1450),
+  ('Karat โถ + อ่าง + ก๊อก', 6500),
+  ('Cotto โถ + อ่าง + ก๊อก', 12000),
+  ('American Standard/TOTO ครบชุด', 22000)
+) as v(name, price)
+where not exists (
+  select 1 from material_market_prices m where m.material_name = v.name
+);
+
+-- ============================================================================
+-- เสร็จ — ตรวจว่าได้ 5 ตาราง: app_users, app_sessions, app_company_profiles,
+-- app_projects, material_market_prices  (ดูใน Table Editor)
+-- ============================================================================

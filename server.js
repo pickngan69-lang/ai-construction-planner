@@ -11,6 +11,7 @@ import authRouter from './server/auth/routes.js'
 import billingRouter from './server/billing/routes.js'
 import erpRouter from './server/erp/routes.js'
 import { ensureDefaultUser } from './server/auth/store.js'
+import { pingDb } from './server/db.js'
 
 dotenv.config()
 const localEnv = dotenv.config({ path: '.env.local' })
@@ -106,9 +107,10 @@ app.get(/.*/, (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'))
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
-  // Ephemeral store on Render → recreate the default admin on every boot.
+  await pingDb() // log whether we're on Postgres or the file fallback
+  // Seed/ensure the default admin exists (persists in DB; recreated each boot on file store).
   ensureDefaultUser()
     .then((r) => {
       if (r.created) console.log(`[auth] ✅ seeded default admin: ${r.email}`)
