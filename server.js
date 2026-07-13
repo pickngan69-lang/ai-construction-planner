@@ -1,9 +1,9 @@
 // Express backend proxy — keeps the Anthropic API key server-side so it never
 // reaches the browser. Uses ANTHROPIC_API_KEY (NOT VITE_ANTHROPIC_API_KEY) and
 // also serves the built frontend from ./dist.
+import './server/loadEnv.js' // ⚠️ ต้องเป็นตัวแรก — โหลด env ก่อน db.js อ่าน DATABASE_URL
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Readable } from 'node:stream'
@@ -13,13 +13,6 @@ import erpRouter from './server/erp/routes.js'
 import { ensureDefaultUser } from './server/auth/store.js'
 import { pingDb } from './server/db.js'
 
-dotenv.config()
-const localEnv = dotenv.config({ path: '.env.local' })
-if (localEnv.parsed) {
-  Object.entries(localEnv.parsed).forEach(([key, value]) => {
-    if (value) process.env[key] = value
-  })
-}
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 5000
