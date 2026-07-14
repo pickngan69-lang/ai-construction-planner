@@ -1,81 +1,85 @@
 import { ANTHROPIC_MODEL, ANTHROPIC_MAX_TOKENS } from '../utils/constants'
 import { repairJSON } from '../utils/jsonRepair'
+import { DISCIPLINES, FOUNDATION_TYPES, ratesForFoundation } from '../data/rateTable'
+import { computeBoq } from './boqEngine'
+import { priceMaterials, materialKeysText } from '../data/materialTable'
 
-const SYSTEM_PROMPT = `คุณคือสถาปนิก/วิศวกรโยธาผู้เชี่ยวชาญด้านการประเมินราคาก่อสร้างบ้านในประเทศไทย
-หน้าที่: วิเคราะห์รูปแบบบ้าน + ข้อมูลโปรเจกต์ → สร้าง BOQ + รายการวัสดุ 3 เกรด
+const SYSTEM_PROMPT = `คุณคือ "ผู้ถอดแบบ" (QS) + สถาปนิก/วิศวกรที่อ่านแบบก่อสร้างบ้านในไทย
+หน้าที่เดียวของคุณ: อ่านแบบ → "ถอดปริมาณงาน" (quantity take-off) ให้ครบและแม่นยำ
 
-⚠️ สำคัญ: คุณ "ไม่ต้อง" คำนวณตารางเวลา/ระยะเวลา/วันเริ่ม-จบ — ผู้ใช้จะจัดการตารางเวลาเอง
+🚫 กฎเหล็ก (ผิดข้อใดข้อหนึ่ง = งานเสีย):
+1. ห้ามคิดราคา/ต้นทุน/ยอดรวมใดๆ ทั้งสิ้น — "โปรแกรม" จะคูณราคาจากตารางเรตกลางเอง
+   (อย่าใส่ field ราคา เช่น material_cost, labor_cost, price ใน boq_items เด็ดขาด)
+2. ห้ามเปลี่ยนสเปกวัสดุไปจากแบบ — ระบุตามที่เห็นในแบบเท่านั้น ถ้าแบบไม่บอกให้ทิ้งว่าง/หมายเหตุ
+3. ห้ามคิดงานที่ไม่มีในแบบ (ห้ามเดา/ห้ามแถม) — ถ้าไม่แน่ใจให้ confidence:"low" + note บอกเหตุผล
+4. ทุกรายการต้องอ้าง "แผ่นแบบ" (drawing_sheet) ที่เอาข้อมูลมา เช่น "S-02", "A-04" ถ้าไม่ทราบใส่ ""
+5. ชนิดฐานราก: ผู้ใช้ล็อกมาแล้ว 1 ชนิด — ใช้เฉพาะรายการฐานรากของชนิดนั้น ห้ามปนชนิดอื่น
+6. ครอบคลุม 5 หมวดงาน: ${DISCIPLINES.map((d) => d.label).join(' / ')}
 
-อัตราค่าแรงอ้างอิง (ระดับมาตรฐาน ปี 2025-2026):
-- ค่าแรงรวมทั้งหลัง: 3,500-5,500 บาท/ตร.ม.
-- งานเสาเข็มตอก: 300-600 บาท/ต้น
-- งานฐานราก: 1,200-2,000 บาท/ลบ.ม.
-- งานเสา/คาน/พื้นคอนกรีต: 800-1,500 บาท/ลบ.ม.
-- งานก่ออิฐ: 150-250 บาท/ตร.ม.
-- งานฉาบปูน: 120-200 บาท/ตร.ม.
-- งานปูกระเบื้องพื้น: 200-400 บาท/ตร.ม.
-- งานปูกระเบื้องผนัง: 250-450 บาท/ตร.ม.
-- งานทาสี: 50-100 บาท/ตร.ม.
-- จุดไฟฟ้า: 800-1,500 บาท/จุด
-- จุดประปา: 1,200-2,500 บาท/จุด
-- งานฝ้าเพดาน: 200-400 บาท/ตร.ม.
-- งานหลังคา (มุงกระเบื้อง): 350-600 บาท/ตร.ม.
+การจับคู่ key:
+- แต่ละรายการให้เลือก "key" จาก "ตารางเรตที่อนุญาต" (แนบมาในข้อความผู้ใช้) ที่ตรงที่สุด
+- ถ้าไม่มี key ที่ตรงจริงๆ ให้ key:"" แล้วอธิบายใน name/note (โปรแกรมจะ flag ให้ผู้ใช้กำหนดราคาเอง)
+- หน่วย (unit) ต้องตรงกับหน่วยของ key นั้นในตาราง (เช่น คอนกรีต=ลบ.ม., ก่อ/ฉาบ/ทาสี=ตร.ม., เสาเข็ม=ต้น, จุดไฟฟ้า/ประปา=จุด)
 
-แนวทางตั้งราคาวัสดุตามเกรด:
-- Economy   → ตัวเลือกประหยัด (≈ 0.7-0.8× มาตรฐาน) เช่น ปูนเสือ, อิฐมอญแดง, สี Jotun Essence, สุขภัณฑ์ Karat
-- Standard  → กลาง-ใช้ทั่วไป (1.0×) เช่น ปูน SCG/อินทรี, อิฐมวลเบา Q-CON, สี TOA, สุขภัณฑ์ Cotto
-- Premium   → ระดับสูง (≈ 1.4-1.6×) เช่น ปูน Insee Super, อิฐมวลเบา Superblock, สี Beger Premium, สุขภัณฑ์ American Standard
-
-ขอบเขตของรายการวัสดุ — แต่ละเกรดต้องมี **15-20 รายการ** ครอบคลุมทั้ง:
-1. งานโครงสร้าง: ปูนซีเมนต์, เหล็กเส้น (เส้น/ปลอก), ทรายก่อสร้าง, หินคลุก, ไม้แบบ, เสาเข็ม
-2. งานก่อ-ฉาบ: อิฐ (มอญ/มวลเบา), ปูนก่อ, ปูนฉาบ, ตะแกรง wire mesh
-3. งานหลังคา: โครงหลังคา, กระเบื้องหลังคา, ฉนวนกันความร้อน
-4. งานสถาปัตย์: กระเบื้องพื้น, กระเบื้องผนัง, สีรองพื้น+สีจริง, ฝ้าเพดาน, ประตู, หน้าต่าง
-5. งานระบบ: สายไฟ, ท่อ PVC, สวิตช์/ปลั๊ก, สุขภัณฑ์ (โถ/อ่าง/ก๊อก)
+การวัดปริมาณ (ให้ระบุใน note ว่าคิดจากอะไร):
+- ก่ออิฐ/ฉาบ/ทาสี → พื้นที่ผนัง (กว้าง×สูง หักช่องเปิด)
+- พื้น/ฝ้า/หลังคา → พื้นที่ตร.ม.
+- คอนกรีต (เสา/คาน/ฐาน) → ปริมาตรลบ.ม. (กว้าง×ยาว×สูง×จำนวน)
+- เสาเข็ม/ประตู/หน้าต่าง/สุขภัณฑ์/จุดระบบ → นับจำนวน
 
 ข้อกำหนด output:
-- ตอบกลับเป็น JSON เท่านั้น (ห้ามมีข้อความอื่น/markdown fence)
-- แบ่ง phases เป็น 5 เฟส: เตรียมงาน, งานโครงสร้าง, งานสถาปัตย์, งานระบบ, งานตกแต่ง
-- material_cost และ labor_cost ใน tasks เป็นบาท (ตัวเลขล้วน) ใช้ระดับ "มาตรฐาน" (×1.0)
-- แต่ละ task ต้องมี "quantity" (ปริมาณงาน ตัวเลขล้วน) + "unit" (หน่วย) ให้สมจริงตามชนิดงาน เช่น
-  เสาเข็ม → ต้น, งานคอนกรีต/ฐานราก → ลบ.ม., ก่ออิฐ-ฉาบ-ปูกระเบื้อง-ทาสี-ฝ้า-หลังคา → ตร.ม.,
-  จุดไฟฟ้า/ประปา → จุด, ประตู/หน้าต่าง/สุขภัณฑ์ → ชุด/บาน โดย material_cost + labor_cost
-  = ยอดรวมของงานนั้น (≈ quantity × ราคาต่อหน่วย) — ห้ามใส่ 0 ใน quantity
-- materials ทั้ง 3 tier: name, spec (ระบุยี่ห้อ + ขนาด), quantity, unit, pricePerUnit
-- ห้ามรวม duration_days, total_estimated_days, schedule, dates, timeline ใดๆ
+- ตอบกลับเป็น JSON เท่านั้น (ห้ามมีข้อความอื่น/ห้าม markdown fence)
+- boq_items = รายการถอดปริมาณงานทั้งหมด (ไม่มีราคา)
+- material_items = รายการวัสดุที่ต้องใช้ — เลือก "key" จาก "ตารางวัสดุที่อนุญาต" + ใส่ "ปริมาณ" ที่ประเมินจากแบบ
+  ⚠️ ห้ามใส่ราคา (pricePerUnit) — โปรแกรมจะเติมราคา 3 เกรดจากตารางกลางเอง
+  ถ้าเห็นสเปก/ยี่ห้อในแบบ ใส่ใน spec ได้ (เป็นหมายเหตุ) แต่ราคายังมาจากตาราง
+- uncertainties = งาน/ข้อมูลที่ไม่แน่ใจและต้องให้ผู้ใช้ยืนยัน
+- ห้ามใส่ duration_days, schedule, dates, timeline ใดๆ (ผู้ใช้จัดตารางเวลาเอง)
 
-ค่าแรงเหมาต่อเกรด (materialLabor):
-- ประเมิน "ค่าแรงเหมาทั้งโปรเจกต์" สำหรับแต่ละเกรด — สะท้อนคุณภาพของผู้รับเหมาตามเกรดที่เลือก
-- Economy   ≈ ช่างรายวัน/ผู้รับเหมาท้องถิ่น (≈ 0.85× ของผลรวมค่าแรงใน tasks)
-- Standard  = ผู้รับเหมาทั่วไปคุณภาพปานกลาง (≈ 1.0×)
-- Premium   ≈ ผู้รับเหมาชั้นนำ มีรับประกันงาน (≈ 1.3× ของ Standard)
-- ตัวเลขเป็นบาท (ตัวเลขล้วน, ตัดทศนิยม)
-
-JSON schema (V5):
+JSON schema (V6 — extraction only, ไม่มีราคาใดๆ):
 {
-  "phases": [
+  "house_analysis": { "type": "string", "estimated_size_sqm": number, "floors": number, "style": "string", "description": "string" },
+  "boq_items": [
     {
-      "name": "string",
-      "tasks": [
-        { "name": "string", "quantity": number, "unit": "string", "material_cost": number, "labor_cost": number, "details": "string" }
-      ]
+      "key": "string (จากตารางเรตที่อนุญาต หรือ "")",
+      "discipline": "architecture|structure|electrical|sanitary|mechanical",
+      "name": "string (ชื่องานตามแบบ)",
+      "spec": "string (สเปกจากแบบ ถ้าไม่มีใส่ "")",
+      "quantity": number,
+      "unit": "string",
+      "drawing_sheet": "string (เลขแผ่นแบบ)",
+      "confidence": "high|medium|low",
+      "note": "string (วิธีคิดปริมาณ/ข้อสงสัย)"
     }
   ],
+  "material_items": [
+    { "key": "string (จากตารางวัสดุที่อนุญาต หรือ "")", "name": "string", "quantity": number, "unit": "string", "spec": "string (สเปกจากแบบ ถ้ามี)" }
+  ],
+  "uncertainties": ["string"],
   "recommendations": ["string"],
   "risks": [{ "risk": "string", "prevention": "string" }],
-  "materials": {
-    "economy":  [{ "name": "string", "spec": "string (ยี่ห้อ + ขนาด)", "quantity": number, "unit": "string", "pricePerUnit": number }, ... 15-20 items],
-    "standard": [...same shape, 15-20 items...],
-    "premium":  [...same shape, 15-20 items...]
-  },
-  "materialLabor": {
-    "economy":  number,
-    "standard": number,
-    "premium":  number
-  }
+  "permits": ["string"]
 }`
 
+// ตารางเรตที่ "อนุญาต" ตามชนิดฐานรากที่ผู้ใช้เลือก — จัดกลุ่มตามหมวดงานให้ AI จับคู่ key
+function buildAllowedRatesText(foundationKey) {
+  const rates = ratesForFoundation(foundationKey)
+  const byDisc = new Map(DISCIPLINES.map((d) => [d.key, []]))
+  for (const r of rates) {
+    if (!byDisc.has(r.discipline)) byDisc.set(r.discipline, [])
+    byDisc.get(r.discipline).push(`${r.key} = ${r.name} [${r.unit}]`)
+  }
+  const out = ['ตารางเรตที่อนุญาต (เลือก key ที่ตรงที่สุด, ห้ามคิดราคา — โปรแกรมคูณราคาเอง):']
+  for (const d of DISCIPLINES) {
+    const items = byDisc.get(d.key) || []
+    if (items.length) out.push(`• ${d.label}: ${items.join(' | ')}`)
+  }
+  return out.join('\n')
+}
+
 function buildProjectInfoText(p) {
+  const foundation =
+    FOUNDATION_TYPES.find((f) => f.key === p.foundation) || FOUNDATION_TYPES[0]
   const lines = ['ข้อมูลโปรเจกต์:']
   if (p.name) lines.push(`- ชื่อโปรเจกต์: ${p.name}`)
   if (p.area) lines.push(`- พื้นที่ใช้สอย: ${p.area} ตร.ม.`)
@@ -86,10 +90,20 @@ function buildProjectInfoText(p) {
   if (p.province) lines.push(`- จังหวัด: ${p.province}`)
   if (p.budget) lines.push(`- งบประมาณ: ${p.budget} บาท`)
   if (p.notes) lines.push(`- หมายเหตุ: ${p.notes}`)
-  if (lines.length === 1) lines.push('- (ผู้ใช้ไม่ได้กรอกข้อมูล — กรุณาประเมินจากรูปภาพ)')
   lines.push('')
   lines.push(
-    'โปรดวิเคราะห์รูป → สร้าง BOQ + รายการวัสดุ 3 เกรด (15-20 รายการ/เกรด) ตอบเป็น JSON ตาม schema ที่กำหนด',
+    `⚠️ ชนิดฐานรากที่ล็อกไว้: ${foundation.label} — ใช้เฉพาะงานฐานรากของชนิดนี้ ห้ามปนชนิดอื่นเด็ดขาด`,
+  )
+  lines.push('')
+  lines.push(buildAllowedRatesText(p.foundation))
+  lines.push('')
+  lines.push(
+    'ตารางวัสดุที่อนุญาต (เลือก key ที่ตรงที่สุดสำหรับ material_items, ห้ามใส่ราคา):',
+  )
+  lines.push(materialKeysText())
+  lines.push('')
+  lines.push(
+    'โปรดอ่านแบบ → ถอดปริมาณงานทั้ง 5 หมวด (boq_items) + รายการวัสดุที่ต้องใช้ (material_items) โดยไม่ใส่ราคาใดๆ ตอบเป็น JSON ตาม schema V6 เท่านั้น',
   )
   return lines.join('\n')
 }
@@ -252,9 +266,37 @@ export async function analyzeHouse(files, projectInfo) {
   }
 
   if (!text) throw new Error('AI ไม่ได้ส่งข้อความตอบกลับ')
+  let parsed
   try {
-    return repairJSON(text)
+    parsed = repairJSON(text)
   } catch {
     throw new Error('AI ตอบกลับไม่ครบ (JSON ถูกตัดกลางคัน) — ลองวิเคราะห์ใหม่')
   }
+
+  // V6: AI ส่ง boq_items (ปริมาณ, ไม่มีราคา) → "โปรแกรม" คูณราคาจากตารางเรตกลาง
+  // = แหล่งความจริงเดียวของ phases/ราคา/ยอดรวม (single source of truth)
+  const anomalies = []
+  if (Array.isArray(parsed.boq_items)) {
+    const boq = computeBoq(parsed.boq_items, {
+      foundation: projectInfo?.foundation,
+      area: Number(projectInfo?.area) || 0,
+    })
+    parsed.phases = boq.phases
+    parsed.total_material_cost = boq.total_material_cost
+    parsed.total_labor_cost = boq.total_labor_cost
+    anomalies.push(...boq.anomalies)
+  }
+
+  // V6: AI ส่ง material_items (key+ปริมาณ, ไม่มีราคา) → "โปรแกรม" เติมราคา+สเปก 3 เกรด
+  // จากตารางวัสดุกลาง (materialTable.js) — ราคาวัสดุมาจากโปรแกรม ไม่ใช่ AI
+  if (Array.isArray(parsed.material_items)) {
+    const m = priceMaterials(parsed.material_items)
+    parsed.materials = { economy: m.economy, standard: m.standard, premium: m.premium }
+    anomalies.push(...m.anomalies)
+  }
+
+  // รวม flag จาก engine (guardrail/หน่วย/ปริมาณ 0/วัสดุไม่มีเรต) กับที่ AI แจ้งไม่แน่ใจ
+  parsed.boq_anomalies = anomalies
+  parsed.uncertainties = parsed.uncertainties || []
+  return parsed
 }

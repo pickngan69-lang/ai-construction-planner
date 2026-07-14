@@ -23,6 +23,7 @@ const DEFAULT_PROJECT_INFO = {
   province: '',
   budget: '',
   grade: 'standard',
+  foundation: 'spread', // ชนิดฐานราก — ล็อกเป็น guardrail ห้าม AI ปนฐานรากข้ามชนิด
   notes: '',
 }
 
@@ -142,6 +143,7 @@ function ContractorDashboard() {
         bedrooms: p.beds != null ? String(p.beds) : '',
         bathrooms: p.baths != null ? String(p.baths) : '',
         budget: p.boqBudget != null ? String(p.boqBudget) : '',
+        foundation: p.foundation || DEFAULT_PROJECT_INFO.foundation,
       }
       setProjectInfo(projInfo)
       setFiles([])

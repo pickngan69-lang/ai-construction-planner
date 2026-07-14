@@ -266,6 +266,21 @@ function TaskRow({ task, isManual, onUpdateTask, onEditTask, onDeleteTask }) {
         {task._isEdited && (
           <span className="ml-2 text-[10px] text-accent">✏️</span>
         )}
+        {task.drawing_sheet && (
+          <span className="ml-2 text-[10px] text-ink-muted border border-line rounded px-1 py-0.5 align-middle">
+            📐 {task.drawing_sheet}
+          </span>
+        )}
+        {task.confidence === 'low' && (
+          <span className="ml-2 text-[10px] text-danger border border-danger/40 bg-danger/10 rounded px-1 py-0.5 align-middle">
+            ตรวจสอบ
+          </span>
+        )}
+        {task.unpriced && (
+          <span className="ml-2 text-[10px] text-amber-600 border border-amber-500/40 bg-amber-500/10 rounded px-1 py-0.5 align-middle">
+            รอกำหนดราคา
+          </span>
+        )}
       </td>
       <td className="px-3 py-2 text-right font-mono text-ink-muted">
         {task.quantity ? formatNumber(task.quantity) : '-'}

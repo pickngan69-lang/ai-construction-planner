@@ -8,6 +8,7 @@ import ModeToggle from './ModeToggle'
 import TaskModal from './TaskModal'
 import SaveProjectModal from './SaveProjectModal'
 import DashboardTab from './tabs/DashboardTab'
+import BoqAuditPanel from './BoqAuditPanel'
 import InteractiveGantt from './InteractiveGantt'
 import BOQTab from './tabs/BOQTab'
 import TaskDetailTab from './tabs/TaskDetailTab'
@@ -566,6 +567,8 @@ function ResultDashboard({
         images={images}
         totalCost={totalCost}
       />
+
+      <BoqAuditPanel result={adjustedResult} />
 
       {hasEdits && (
         <div

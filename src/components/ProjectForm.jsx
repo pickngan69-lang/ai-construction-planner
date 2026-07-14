@@ -1,4 +1,5 @@
 import { HOUSE_STYLES, PROVINCES } from '../utils/constants'
+import { FOUNDATION_TYPES } from '../data/rateTable'
 import GradeSelector from './ui/GradeSelector'
 import Button from './ui/Button'
 import Card from './ui/Card'
@@ -127,6 +128,23 @@ function ProjectForm({
           />
         </Field>
       </div>
+
+      <Field label="ชนิดฐานราก (สำคัญ — ล็อกก่อนวิเคราะห์ ห้ามปนชนิด)">
+        <select
+          value={projectInfo.foundation}
+          onChange={update('foundation')}
+          className={inputClass}
+        >
+          {FOUNDATION_TYPES.map((f) => (
+            <option key={f.key} value={f.key}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <span className="block text-xs text-ink-muted mt-1.5">
+          {FOUNDATION_TYPES.find((f) => f.key === projectInfo.foundation)?.desc}
+        </span>
+      </Field>
 
       <Field label="เกรดวัสดุ">
         <GradeSelector value={projectInfo.grade} onChange={updateGrade} />
