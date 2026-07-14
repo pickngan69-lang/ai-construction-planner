@@ -1,19 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { getMemberToken } from '../features/auth/memberAuthApi'
 
-// ข้อมูลบริษัท/ผู้รับเหมา — เก็บครั้งเดียว ใช้ auto-fill + หัวกระดาษเอกสารทุกใบ
-// (ใบเสนอราคา / สัญญา / ใบเสร็จ). เก็บใน localStorage ฝั่งเบราว์เซอร์
-// (คงอยู่ข้าม deploy แต่ยังไม่ sync ข้ามอุปกรณ์ — ย้าย DB ภายหลังได้)
+// ข้อมูลบริษัท/ผู้รับเหมา — ใช้ auto-fill + หัวกระดาษเอกสารทุกใบ. เก็บใน DB
+// (app_company_profiles) เมื่อล็อกอิน + cache ใน localStorage
 const STORAGE_KEY = 'acp-company'
 
 const EMPTY_COMPANY = Object.freeze({
-  name: '', // ชื่อบริษัท/ผู้รับเหมา
-  logo: '', // โลโก้ (base64 data URL)
-  taxId: '', // เลขประจำตัวผู้เสียภาษี / บัตรประชาชน
-  registrationNo: '', // ทะเบียนนิติบุคคล / ทะเบียนพาณิชย์
-  address: '', // ที่อยู่
-  phone: '', // โทรศัพท์
-  email: '', // อีเมล
-  website: '', // เว็บไซต์ (ถ้ามี)
+  name: '',
+  logo: '',
+  taxId: '',
+  registrationNo: '',
+  address: '',
+  phone: '',
+  email: '',
+  website: '',
 })
 
 const CompanyContext = createContext(null)
@@ -32,19 +32,45 @@ export function CompanyProvider({ children }) {
   const [company, setCompanyState] = useState(load)
 
   useEffect(() => {
+    const token = getMemberToken()
+    if (!token) return
+    let alive = true
+    fetch('/api/company', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && d?.profile) {
+          setCompanyState((prev) => ({ ...prev, ...d.profile }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(company))
     } catch {
-      // ignore quota / unavailable storage
+      // ignore
     }
   }, [company])
 
-  // อัปเดตบางฟิลด์ (merge)
   const updateCompany = useCallback((patch) => {
-    setCompanyState((prev) => ({ ...prev, ...patch }))
+    setCompanyState((prev) => {
+      const next = { ...prev, ...patch }
+      const token = getMemberToken()
+      if (token) {
+        fetch('/api/company', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(next),
+        }).catch(() => {})
+      }
+      return next
+    })
   }, [])
 
-  // บริษัทถือว่า "ตั้งค่าแล้ว" เมื่อมีชื่ออย่างน้อย
   const isConfigured = Boolean(company.name?.trim())
 
   const value = useMemo(

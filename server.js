@@ -10,6 +10,8 @@ import { Readable } from 'node:stream'
 import authRouter from './server/auth/routes.js'
 import billingRouter from './server/billing/routes.js'
 import erpRouter from './server/erp/routes.js'
+import companyRouter from './server/company/routes.js'
+import projectsRouter from './server/projects/routes.js'
 import { ensureDefaultUser } from './server/auth/store.js'
 import { pingDb } from './server/db.js'
 
@@ -26,6 +28,8 @@ app.use(express.json({ limit: '50mb' })) // base64 images can be several MB
 app.use('/api/auth', authRouter)
 app.use('/api/billing', billingRouter)
 app.use('/api/erp', erpRouter)
+app.use('/api/company', companyRouter)
+app.use('/api/projects', projectsRouter)
 
 // ---- API proxy: forward the request body to Anthropic with the secret key ----
 app.post('/api/analyze', async (req, res) => {

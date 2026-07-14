@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { MOCK_PROJECTS } from '../data/mockProjects'
+import { getMemberToken } from '../features/auth/memberAuthApi'
 
 const STORAGE_KEY = 'acp-projects'
 const OVERRIDES_KEY = 'acp-project-overrides'
@@ -22,46 +22,71 @@ function loadJson(key, fallback) {
   }
 }
 
-// จัดการสถานะโปรเจกต์แบบ global. โปรเจกต์ที่ผู้ใช้สร้างจากผลวิเคราะห์ AI เก็บใน
-// `added`; การแก้ไข/เปลี่ยนสถานะ (รวมถึงของ seed) เก็บเป็น `overrides` ราย id แล้ว
-// merge ทับ — ทำให้แก้ทั้ง seed และโปรเจกต์ใหม่ได้เหมือนกันโดยไม่แตะข้อมูลตัวอย่าง.
+// รวมข้อมูลเก่า (added + overrides) → flat list ครั้งแรก แล้วเก็บเป็น flat ต่อไป
+function loadInitial() {
+  const added = loadJson(STORAGE_KEY, [])
+  const overrides = loadJson(OVERRIDES_KEY, {})
+  if (!Array.isArray(added)) return []
+  return added.map((p) => ({ ...p, ...(overrides[p.id] || {}) }))
+}
+
+// จัดการโปรเจกต์แบบ global — เก็บใน DB (app_projects) เมื่อล็อกอิน + cache localStorage
 export function ProjectProvider({ children }) {
-  const [added, setAdded] = useState(() => loadJson(STORAGE_KEY, []))
-  const [overrides, setOverrides] = useState(() => loadJson(OVERRIDES_KEY, {}))
+  const [projects, setProjects] = useState(loadInitial)
+
+  // โหลดจาก DB ตอน mount (ถ้าล็อกอิน) — DB เป็นแหล่งจริง
+  useEffect(() => {
+    const token = getMemberToken()
+    if (!token) return
+    let alive = true
+    fetch('/api/projects', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && Array.isArray(d?.projects)) setProjects(d.projects)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(added))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
     } catch {
-      // ignore quota / unavailable storage
+      // ignore
     }
-  }, [added])
+  }, [projects])
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides))
-    } catch {
-      // ignore quota / unavailable storage
-    }
-  }, [overrides])
+  const saveToDb = useCallback((project) => {
+    const token = getMemberToken()
+    if (!token || !project?.id) return
+    fetch(`/api/projects/${encodeURIComponent(project.id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(project),
+    }).catch(() => {})
+  }, [])
 
-  const projects = useMemo(
-    () =>
-      [...added, ...MOCK_PROJECTS].map((p) => ({
-        ...p,
-        ...(overrides[p.id] || {}),
-      })),
-    [added, overrides],
+  const addProject = useCallback(
+    (project) => {
+      setProjects((prev) => [project, ...prev.filter((p) => p.id !== project.id)])
+      saveToDb(project)
+    },
+    [saveToDb],
   )
 
-  const addProject = useCallback((project) => {
-    setAdded((prev) => [project, ...prev])
-  }, [])
-
-  // แก้ไข/เปลี่ยนสถานะโปรเจกต์ (ใช้ได้ทั้ง seed และที่สร้างใหม่)
-  const updateProject = useCallback((id, patch) => {
-    setOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))
-  }, [])
+  const updateProject = useCallback(
+    (id, patch) => {
+      setProjects((prev) => {
+        const next = prev.map((p) => (p.id === id ? { ...p, ...patch } : p))
+        const updated = next.find((p) => p.id === id)
+        if (updated) saveToDb(updated)
+        return next
+      })
+    },
+    [saveToDb],
+  )
 
   const getProject = useCallback(
     (id) => projects.find((p) => p.id === id) || null,
